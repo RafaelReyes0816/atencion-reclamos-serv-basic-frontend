@@ -14,6 +14,7 @@ import CerrarReclamo from './pages/Seguimiento/CerrarReclamo';
 import AvancesTrabajo from './pages/Seguimiento/AvancesTrabajo';
 import AsignarCuadrilla from './pages/Seguimiento/AsignarCuadrilla';
 import DerivarComercial from './pages/Seguimiento/DerivarComercial';
+import EleccionAtencion from './pages/Seguimiento/EleccionAtencion';
 import ListaOrdenes from './pages/Seguimiento/ListaOrdenes';
 import DetalleDerivacion from './pages/Seguimiento/DetalleDerivacion';
 import Cuadrillas from './pages/Administracion/Cuadrillas';
@@ -113,6 +114,14 @@ const App = () => (
             }
           />
           <Route
+            path="reclamos/:id/elegir-atencion"
+            element={
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
+                <EleccionAtencion />
+              </Protegida>
+            }
+          />
+          <Route
             path="reclamos/:id/derivacion"
             element={
               <Protegida roles={['tecnico', 'supervisor', 'admin']}>
@@ -139,7 +148,7 @@ const App = () => (
           <Route
             path="reclamos/:id/asignar-plazo"
             element={
-              <Protegida roles={['supervisor', 'admin']}>
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
                 <AsignarPlazo />
               </Protegida>
             }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { obtenerReclamo } from '../../api/reclamos';
 import { obtenerOrdenPorReclamo, listarAvances, crearAvance, actualizarOrden } from '../../api/seguimiento';
 import { Alerta, Badge, Cargando, humanizar } from '../../components/UI';
@@ -24,6 +24,7 @@ const AvancesTrabajo = () => {
     descripcion: '',
   });
   const [error, setError] = useState(null);
+  const [exito, setExito] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [actualizandoOrden, setActualizandoOrden] = useState(false);
@@ -77,9 +78,17 @@ const AvancesTrabajo = () => {
   const cambiarEstadoOrden = async (nuevoEstado) => {
     setActualizandoOrden(true);
     setError(null);
+    setExito(null);
     try {
       await actualizarOrden(orden.id_orden, { estado_orden: nuevoEstado });
       setOrden({ ...orden, estado_orden: nuevoEstado });
+      if (nuevoEstado === 'resuelta') {
+        const rec = await obtenerReclamo(id);
+        setReclamo(rec);
+        setExito('Orden resuelta. El reclamo ahora está en estado resuelto.');
+      } else if (nuevoEstado === 'en_curso') {
+        setExito('Atención iniciada. Registra los avances del trabajo realizado.');
+      }
     } catch (err) {
       setError(err.mensaje || 'No se pudo actualizar el estado de la orden');
     } finally {
@@ -104,6 +113,7 @@ const AvancesTrabajo = () => {
       </header>
 
       {error && <Alerta tipo="aviso" titulo="Seguimiento no disponible">{error}</Alerta>}
+      {exito && <Alerta tipo="exito">{exito}</Alerta>}
 
       {orden && (
         <>
@@ -142,13 +152,25 @@ const AvancesTrabajo = () => {
                       onClick={() => cambiarEstadoOrden('resuelta')}
                       disabled={actualizandoOrden}
                     >
-                      {actualizandoOrden ? '...' : 'Marcar resuelta'}
+                      {actualizandoOrden ? '...' : 'Resolver reclamo'}
                     </button>
                   )}
                 </div>
               )}
             </div>
           </div>
+
+          {orden.estado_orden === 'resuelta' && (
+            <Alerta tipo="info" titulo="Siguiente paso">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <span>Un supervisor debe cerrar el reclamo para completar el proceso.</span>
+                <Link to={`/panel/reclamos/${id}/cerrar`} className="btn btn--primary btn--sm">
+                  {icono('check')}
+                  Cerrar reclamo
+                </Link>
+              </div>
+            </Alerta>
+          )}
 
           <div className="seguimiento__grid">
             <section className="card">
@@ -175,6 +197,7 @@ const AvancesTrabajo = () => {
               )}
             </section>
 
+            {orden.estado_orden !== 'resuelta' && (
             <section className="card">
               <h2 className="card__titulo">Registrar avance</h2>
               <form className="form-grid form-grid--apilado" onSubmit={enviar}>
@@ -224,6 +247,7 @@ const AvancesTrabajo = () => {
                 </button>
               </form>
             </section>
+            )}
           </div>
         </>
       )}

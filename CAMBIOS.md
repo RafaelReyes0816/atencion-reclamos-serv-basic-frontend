@@ -506,3 +506,86 @@ errores de consola ni respuestas `4xx`/`5xx`.
 - Reportes diario y mensual, con descarga de `.xlsx` correcta.
 - Barrido de caracteres CJK en `src/`: ninguno restante.
 - `pytest` del backend: **191 passed**, código de salida `0`.
+
+---
+
+## 15. Maquina de estados y flujo de atencion
+
+### `src/components/FlujoReclamo.jsx` (nuevo)
+
+Stepper visual de 5 pasos: Registro, Clasificacion, Plazos, Atencion, Resolucion.
+Calcula el paso actual a partir del estado del reclamo. Integrado en DetalleReclamo.
+
+### `src/components/Toast.jsx` (nuevo)
+
+Componente de notificacion temporal (exito/error/info) con animacion de entrada.
+
+### `src/pages/Seguimiento/EleccionAtencion.jsx` (nuevo)
+
+Pantalla de decision con dos cards: "Atencion Tecnica" (cuadrilla) vs "Derivacion Comercial" (area).
+Reemplaza los dos botones separados que aparecian en DetalleReclamo.
+
+### `src/pages/Reclamos/DetalleReclamo.jsx` (modificado)
+
+- Integracion del stepper `FlujoReclamo`.
+- Acciones corregidas: "Asignar plazo" solo si `clasificado` sin `fecha_tope`.
+- "Elegir atencion" solo si `clasificado` con `fecha_tope`.
+- "Resolver" solo si `en_atencion_tecnica` o `en_atencion_comercial` (ya no desde `clasificado`).
+- "Resolver" tambien disponible para `escalado`.
+
+### `src/pages/Seguimiento/AvancesTrabajo.jsx` (modificado)
+
+- Alerta de exito al iniciar atencion y al resolver.
+- Boton "Cerrar reclamo" como siguiente paso despues de resolver.
+- Form de "Registrar avance" oculto cuando la orden esta resuelta.
+
+### `src/pages/Seguimiento/DerivarComercial.jsx` (modificado)
+
+- Select envia `a.tipo` (enum) en vez de `a.nombre` (display name) - fix de bug.
+- Redirect a `/derivacion` si ya tiene derivacion (en vez de mostrar error).
+
+### `src/pages/Seguimiento/AsignarCuadrilla.jsx` (modificado)
+
+- Redirect a `/avances` si ya tiene orden (en vez de mostrar error).
+
+### `src/pages/Seguimiento/CerrarReclamo.jsx` (modificado)
+
+- Form oculto si el reclamo no esta en `resuelto`.
+
+### `src/pages/Seguimiento/ResolverReclamo.jsx` (modificado)
+
+- Form oculto si el reclamo esta `cerrado`.
+- Textarea de `detalle` eliminado (backend no lo almacenaba).
+
+### `src/pages/Reclamos/ListaReclamos.jsx` (modificado)
+
+- Filtros `estado`, `servicio`, `categoria`, `urgencia` ahora se envian al backend (server-side).
+- Urgency options corregidos: `programada`/`normal` en vez de `baja`/`media`.
+- Busqueda por cuadrilla removida (dead code).
+
+### `src/pages/Clasificacion/ClasificarReclamo.jsx` (modificado)
+
+- Dead code removido: `reclamo.direccion` y `reclamo.barrio` (campos inexistentes en la API).
+
+### `src/pages/Reclamos/NuevoReclamo.jsx` (modificado)
+
+- `minLength="5"` agregado al textarea de descripcion (backend lo requiere).
+
+### `src/pages/ConsultaEstado.jsx` (modificado)
+
+- Login link cambiado de `/` a `/ingresar`.
+
+### `src/pages/Dashboard.jsx` (modificado)
+
+- Filtro corregido: `descartado` (Resultado) cambiado a `resuelto` (EstadoReclamo).
+
+### `src/App.jsx` (modificado)
+
+- Nueva ruta `/reclamos/:id/elegir-atencion`.
+- Ruta `asignar-plazo` abierta a `tecnico` (antes solo `supervisor`/`admin`).
+
+### `src/index.css` (modificado)
+
+- CSS del stepper (`.flujopasos`).
+- CSS del toast (`.toast`).
+- CSS de las cards de decision (`.eleccion-grid`, `.eleccion-card`).

@@ -28,15 +28,14 @@ const DerivarComercial = () => {
 
         const yaTiene = await obtenerDerivacion(id).catch(() => null);
         if (yaTiene) {
-          setError('Este reclamo ya tiene una derivación comercial.');
-          setCargando(false);
+          navegar(`/panel/reclamos/${id}/derivacion`, { replace: true });
           return;
         }
 
         const lista = await listarAreas();
         setAreas(lista);
         if (lista.length > 0) {
-          setFormulario((f) => ({ ...f, area_comercial: lista[0].nombre }));
+          setFormulario((f) => ({ ...f, area_comercial: lista[0].tipo }));
         }
       } catch (err) {
         setError(err.mensaje || 'No se pudo cargar la información');
@@ -45,7 +44,7 @@ const DerivarComercial = () => {
       }
     };
     cargar();
-  }, [id]);
+  }, [id, navegar]);
 
   const enviar = async (e) => {
     e.preventDefault();
@@ -111,7 +110,7 @@ const DerivarComercial = () => {
             required
           >
             {areas.map((a) => (
-              <option key={a.id_area} value={a.nombre}>
+              <option key={a.id_area} value={a.tipo}>
                 {a.nombre} ({a.tipo})
               </option>
             ))}

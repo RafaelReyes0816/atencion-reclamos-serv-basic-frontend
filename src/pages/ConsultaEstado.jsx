@@ -106,7 +106,7 @@ const ConsultaEstado = () => {
 
           <p className="consulta__nota">
             Para ver el detalle completo y los avances del trabajo,{' '}
-            <Link to="/">inicia sesión</Link> con tu documento.
+            <Link to="/ingresar">inicia sesión</Link> con tu documento.
           </p>
         </section>
       )}

@@ -2436,3 +2436,275 @@ textarea {
     break-inside: avoid;
   }
 }
+
+/* ------------------------- Flujo de pasos (stepper) ----------------------- */
+
+.flujopasos {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: var(--e-4) var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sombra-sm);
+  overflow-x: auto;
+}
+
+.flujopasos__paso {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.flujopasos__paso:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--n-200);
+  margin: 0 var(--e-3);
+  min-width: 20px;
+}
+
+.flujopasos__paso--completado:not(:last-child)::after {
+  background: var(--exito-500);
+}
+
+.flujopasos__numero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--n-100);
+  color: var(--n-500);
+  border: 2px solid var(--n-200);
+  transition: all var(--transicion);
+}
+
+.flujopasos__paso--completado .flujopasos__numero {
+  background: var(--exito-500);
+  color: var(--n-0);
+  border-color: var(--exito-500);
+}
+
+.flujopasos__paso--actual .flujopasos__numero {
+  background: var(--marca);
+  color: var(--n-0);
+  border-color: var(--marca);
+  box-shadow: var(--sombra-marca);
+}
+
+.flujopasos__paso--actual .flujopasos__etiqueta {
+  color: var(--n-900);
+  font-weight: 600;
+}
+
+.flujopasos__etiqueta {
+  font-size: 0.82rem;
+  color: var(--n-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .flujopasos {
+    padding: var(--e-3) var(--e-4);
+  }
+
+  .flujopasos__etiqueta {
+    display: none;
+  }
+
+  .flujopasos__numero {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ------------------------- Toast ----------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: var(--e-6);
+  right: var(--e-6);
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding: var(--e-3) var(--e-5);
+  border-radius: var(--r-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: var(--sombra-lg);
+  z-index: 9999;
+  animation: toast-entrar 200ms ease-out;
+}
+
+@keyframes toast-entrar {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast--exito {
+  background: var(--exito-600);
+  color: var(--n-0);
+}
+
+.toast--error {
+  background: var(--peligro-600);
+  color: var(--n-0);
+}
+
+.toast--info {
+  background: var(--azul-600);
+  color: var(--n-0);
+}
+
+.toast__mensaje {
+  flex: 1;
+}
+
+.toast__cerrar {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.8;
+  padding: 0;
+  line-height: 1;
+}
+
+.toast__cerrar:hover {
+  opacity: 1;
+}
+
+/* ------------------------- Elección de atención --------------------------- */
+
+.eleccion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--e-5);
+}
+
+.eleccion-card {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform var(--transicion), box-shadow var(--transicion),
+    border-color var(--transicion);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+}
+
+.eleccion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
+  text-decoration: none;
+  color: inherit;
+}
+
+.eleccion-card--tecnica {
+  border-color: var(--azul-200);
+  background: linear-gradient(160deg, var(--azul-50), var(--superficie) 50%);
+}
+
+.eleccion-card--tecnica:hover {
+  border-color: var(--azul-400);
+}
+
+.eleccion-card--comercial {
+  border-color: var(--alerta-200);
+  background: linear-gradient(160deg, var(--alerta-50), var(--superficie) 50%);
+}
+
+.eleccion-card--comercial:hover {
+  border-color: var(--alerta-500);
+}
+
+.eleccion-card__icono {
+  font-size: 1.8rem;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+}
+
+.eleccion-card--tecnica .eleccion-card__icono {
+  background: var(--azul-100);
+  color: var(--azul-600);
+}
+
+.eleccion-card--comercial .eleccion-card__icono {
+  background: var(--alerta-50);
+  color: var(--alerta-600);
+}
+
+.eleccion-card__titulo {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.eleccion-card__desc {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.eleccion-card__lista {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.eleccion-card__lista li {
+  font-size: 0.85rem;
+  color: var(--n-600);
+  padding-left: 1.2em;
+  position: relative;
+}
+
+.eleccion-card__lista li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.eleccion-card--tecnica .eleccion-card__lista li::before {
+  background: var(--azul-500);
+}
+
+.eleccion-card--comercial .eleccion-card__lista li::before {
+  background: var(--alerta-500);
+}
+
+@media (max-width: 640px) {
+  .eleccion-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .toast {
+    left: var(--e-4);
+    right: var(--e-4);
+    bottom: var(--e-4);
+  }
+}

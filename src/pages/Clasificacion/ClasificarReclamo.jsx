@@ -106,18 +106,6 @@ const ClasificarReclamo = () => {
             <dt>Recibido</dt>
             <dd>{reclamo.fecha_recepcion}</dd>
           </div>
-          {reclamo.direccion && (
-            <div className="lista-datos__item">
-              <dt>Dirección</dt>
-              <dd>{reclamo.direccion}</dd>
-            </div>
-          )}
-          {reclamo.barrio && (
-            <div className="lista-datos__item">
-              <dt>Barrio</dt>
-              <dd>{reclamo.barrio}</dd>
-            </div>
-          )}
         </dl>
       </section>
 

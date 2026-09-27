@@ -153,6 +153,7 @@ const NuevoReclamo = () => {
             id="descripcion"
             name="descripcion"
             rows="5"
+            minLength="5"
             maxLength="1000"
             value={formulario.descripcion}
             onChange={cambiar}

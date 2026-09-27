@@ -120,7 +120,7 @@ const Dashboard = () => {
 
   /* ---------- Vista del ciudadano ---------- */
   if (!gestion) {
-    const abiertos = (propios || []).filter((r) => !['cerrado', 'descartado'].includes(r.estado));
+    const abiertos = (propios || []).filter((r) => !['cerrado', 'resuelto'].includes(r.estado));
     const resueltos = (propios || []).filter((r) => r.estado === 'resuelto');
     const cerrados = (propios || []).filter((r) => r.estado === 'cerrado');
     const ultimos = [...(propios || [])].slice(0, 5);

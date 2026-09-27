@@ -17,7 +17,7 @@ const ResolverReclamo = () => {
   const { rol } = useAuth();
 
   const [reclamo, setReclamo] = useState(null);
-  const [formulario, setFormulario] = useState({ resultado: 'resuelto', detalle: '' });
+  const [formulario, setFormulario] = useState({ resultado: 'resuelto' });
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
@@ -85,6 +85,7 @@ const ResolverReclamo = () => {
         </Alerta>
       )}
 
+      {!yaCerrado && (
       <form className="card form-grid" onSubmit={enviar}>
         {error && <Alerta tipo="error">{error}</Alerta>}
 
@@ -124,23 +125,6 @@ const ResolverReclamo = () => {
           </select>
         </div>
 
-        <div className="campo campo--ancho">
-          <label htmlFor="detalle">Detalle de lo realizado</label>
-          <textarea
-            id="detalle"
-            name="detalle"
-            rows="4"
-            maxLength="500"
-            value={formulario.detalle}
-            onChange={(e) => setFormulario({ ...formulario, detalle: e.target.value })}
-            placeholder="Describe el trabajo ejecutado, materiales usados, etc."
-            required
-          />
-          <small className="campo__ayuda">
-            Este texto queda registrado en el historial del reclamo.
-          </small>
-        </div>
-
         <div className="form-grid__acciones">
           <button type="button" className="btn btn--outline" onClick={() => navegar(-1)}>
             Cancelar
@@ -148,12 +132,13 @@ const ResolverReclamo = () => {
           <button
             type="submit"
             className="btn btn--accent"
-            disabled={enviando || yaCerrado || (yaResuelto && !esInterno(rol))}
+            disabled={enviando || (yaResuelto && !esInterno(rol))}
           >
             {enviando ? 'Guardando...' : 'Marcar como resuelto'}
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 };

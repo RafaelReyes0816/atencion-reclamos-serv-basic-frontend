@@ -71,6 +71,7 @@ const CerrarReclamo = () => {
         </Alerta>
       )}
 
+      {puedeCerrar && (
       <form className="card form-grid" onSubmit={enviar}>
         {error && <Alerta tipo="error">{error}</Alerta>}
 
@@ -112,11 +113,12 @@ const CerrarReclamo = () => {
           <button type="button" className="btn btn--outline" onClick={() => navegar(-1)}>
             Cancelar
           </button>
-          <button type="submit" className="btn btn--primary" disabled={enviando || !puedeCerrar}>
+          <button type="submit" className="btn btn--primary" disabled={enviando}>
             {enviando ? 'Cerrando...' : 'Confirmar cierre'}
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 };

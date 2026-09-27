@@ -50,14 +50,19 @@ const ListaReclamos = () => {
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      setReclamos(await listarReclamos());
+      setReclamos(await listarReclamos({
+        estado: filtros.estado,
+        servicio: filtros.servicio,
+        categoria: filtros.categoria,
+        urgencia: filtros.urgencia,
+      }));
       setError(null);
     } catch (err) {
       setError(err.mensaje || 'No se pudieron cargar los reclamos');
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [filtros.estado, filtros.servicio, filtros.categoria, filtros.urgencia]);
 
   useEffect(() => {
     cargar();
@@ -87,8 +92,7 @@ const ListaReclamos = () => {
       const q = busqueda.toLowerCase();
       const coincide =
         String(r.id_reclamo).includes(q) ||
-        (r.descripcion || '').toLowerCase().includes(q) ||
-        (r.cuadrilla || '').toLowerCase().includes(q);
+        (r.descripcion || '').toLowerCase().includes(q);
       if (!coincide) return false;
     }
     return true;
@@ -140,7 +144,7 @@ const ListaReclamos = () => {
             {icono('buscar')}
             <input
               type="search"
-              placeholder="Buscar por ID, descripción o cuadrilla"
+              placeholder="Buscar por ID o descripción"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
@@ -190,8 +194,8 @@ const ListaReclamos = () => {
             aria-label="Filtrar por urgencia"
           >
             <option value="">Toda urgencia</option>
-            <option value="baja">Baja</option>
-            <option value="media">Media</option>
+            <option value="programada">Programada</option>
+            <option value="normal">Normal</option>
             <option value="alta">Alta</option>
             <option value="critica">Crítica</option>
           </select>

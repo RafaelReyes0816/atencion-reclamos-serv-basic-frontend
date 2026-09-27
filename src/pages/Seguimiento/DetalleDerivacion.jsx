@@ -47,7 +47,9 @@ const DetalleDerivacion = () => {
         estado_derivacion: 'resuelta',
       });
       setDerivacion(actualizada);
-      setExito('Derivación marcada como resuelta.');
+      const rec = await obtenerReclamo(id);
+      setReclamo(rec);
+      setExito('Derivación resuelta. El reclamo ahora está en estado resuelto.');
     } catch (err) {
       setError(err.mensaje || 'No se pudo actualizar la derivación');
     } finally {
@@ -125,7 +127,7 @@ const DetalleDerivacion = () => {
                   disabled={enviando}
                 >
                   {icono('check')}
-                  {enviando ? 'Actualizando...' : 'Marcar como resuelta'}
+                  {enviando ? 'Actualizando...' : 'Resolver derivación'}
                 </button>
               </section>
             )}

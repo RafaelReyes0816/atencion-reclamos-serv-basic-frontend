@@ -28,8 +28,7 @@ const AsignarCuadrilla = () => {
 
         const yaTieneOrden = await obtenerOrdenPorReclamo(id).catch(() => null);
         if (yaTieneOrden) {
-          setError('Este reclamo ya tiene una orden de trabajo asignada.');
-          setCargando(false);
+          navegar(`/panel/reclamos/${id}/avances`, { replace: true });
           return;
         }
 
@@ -45,7 +44,7 @@ const AsignarCuadrilla = () => {
       }
     };
     cargar();
-  }, [id]);
+  }, [id, navegar]);
 
   const enviar = async (e) => {
     e.preventDefault();

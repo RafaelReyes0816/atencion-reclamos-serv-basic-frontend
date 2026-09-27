@@ -4,6 +4,7 @@ import { useAuth, esInterno, esGestion } from '../../context/AuthContext';
 import { obtenerReclamo, obtenerComprobante } from '../../api/reclamos';
 import { obtenerDerivacion } from '../../api/seguimiento';
 import { Alerta, Badge, Cargando, humanizar } from '../../components/UI';
+import FlujoReclamo from '../../components/FlujoReclamo';
 import { icono } from '../../components/Iconos';
 
 const CAMPOS = [
@@ -86,7 +87,7 @@ const DetalleReclamo = () => {
       icono: 'editar',
     });
   }
-  if (reclamo.estado === 'clasificado' && esGestion(rol)) {
+  if (reclamo.estado === 'clasificado' && !reclamo.fecha_tope && esGestion(rol)) {
     acciones.push({
       a: `/panel/reclamos/${id}/asignar-plazo`,
       texto: 'Asignar plazo',
@@ -94,8 +95,16 @@ const DetalleReclamo = () => {
       icono: 'reloj',
     });
   }
+  if (reclamo.estado === 'clasificado' && reclamo.fecha_tope && esInterno(rol)) {
+    acciones.push({
+      a: `/panel/reclamos/${id}/elegir-atencion`,
+      texto: 'Elegir atención',
+      clase: 'btn--primary',
+      icono: 'seguimiento',
+    });
+  }
   if (
-    ['en_atencion_tecnica', 'en_atencion_comercial', 'clasificado'].includes(reclamo.estado) &&
+    ['en_atencion_tecnica', 'en_atencion_comercial', 'escalado'].includes(reclamo.estado) &&
     esInterno(rol)
   ) {
     acciones.push({
@@ -103,20 +112,6 @@ const DetalleReclamo = () => {
       texto: 'Resolver',
       clase: 'btn--accent',
       icono: 'check',
-    });
-  }
-  if (reclamo.estado === 'clasificado' && reclamo.fecha_tope && esInterno(rol)) {
-    acciones.push({
-      a: `/panel/reclamos/${id}/asignar-cuadrilla`,
-      texto: 'Asignar cuadrilla',
-      clase: 'btn--primary',
-      icono: 'seguimiento',
-    });
-    acciones.push({
-      a: `/panel/reclamos/${id}/derivar-comercial`,
-      texto: 'Derivar a comercial',
-      clase: 'btn--outline',
-      icono: 'seguimiento',
     });
   }
   if (reclamo.estado === 'resuelto' && esGestion(rol)) {
@@ -162,6 +157,8 @@ const DetalleReclamo = () => {
           Pasaron {Math.abs(diasRestantes)} día(s) desde la fecha límite regulatoria.
         </Alerta>
       )}
+
+      <FlujoReclamo reclamo={reclamo} />
 
       <div className="detalle__grid">
         <section className="card">
