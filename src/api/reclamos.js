@@ -1,7 +1,10 @@
-import api from '../api/client';
+﻿import api from '../api/client';
 
-export const listarReclamos = async () => {
-  const response = await api.get('/reclamos');
+export const listarReclamos = async (filtros = {}) => {
+  const limpio = Object.fromEntries(
+    Object.entries(filtros).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  );
+  const response = await api.get('/reclamos/', { params: limpio });
   return response.data;
 };
 
@@ -11,7 +14,7 @@ export const obtenerReclamo = async (id) => {
 };
 
 export const crearReclamo = async (data) => {
-  const response = await api.post('/reclamos', data);
+  const response = await api.post('/reclamos/', data);
   return response.data;
 };
 
@@ -40,11 +43,17 @@ export const cerrarReclamo = async (id, cierre) => {
   return response.data;
 };
 
+export const actualizarContacto = async (id, contacto) => {
+  const response = await api.put(`/reclamos/${id}/contacto`, contacto);
+  return response.data;
+};
+
 export const obtenerComprobante = async (id) => {
   const response = await api.get(`/reclamos/${id}/comprobante`);
   return response.data;
 };
 
+/** Endpoint publico: no necesita token. */
 export const consultarEstado = async (idODoc) => {
   const response = await api.get(`/reclamos/estado/${idODoc}`);
   return response.data;

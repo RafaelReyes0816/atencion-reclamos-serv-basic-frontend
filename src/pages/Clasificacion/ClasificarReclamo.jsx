@@ -1,60 +1,191 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { clasificarReclamo } from '../../api/reclamos';
+import { clasificarReclamo, obtenerReclamo } from '../../api/reclamos';
+import { Alerta, Badge, Cargando } from '../../components/UI';
+import { icono } from '../../components/Iconos';
+
+const SERVICIOS = [
+  ['agua', 'Agua'],
+  ['luz', 'Luz'],
+];
+
+const CATEGORIAS = [
+  ['corte', 'Corte'],
+  ['fuga', 'Fuga'],
+  ['facturacion', 'Facturación'],
+  ['falla_tecnica', 'Falla técnica'],
+];
+
+const URGENCIAS = [
+  ['programada', 'Programada'],
+  ['normal', 'Normal'],
+  ['alta', 'Alta'],
+  ['critica', 'Crítica'],
+];
 
 const ClasificarReclamo = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const navegar = useNavigate();
+
+  const [reclamo, setReclamo] = useState(null);
   const [formulario, setFormulario] = useState({
     servicio: 'agua',
     categoria: 'corte',
     urgencia: 'normal',
   });
+  const [error, setError] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+  const [cargando, setCargando] = useState(true);
 
-  const handleChange = (e) => {
-    setFormulario({ ...formulario, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        const rec = await obtenerReclamo(id);
+        setReclamo(rec);
+        setFormulario({
+          servicio: rec.servicio,
+          categoria: rec.categoria,
+          urgencia: rec.urgencia,
+        });
+      } catch (err) {
+        setError(err.mensaje || 'No se pudo cargar el reclamo');
+      } finally {
+        setCargando(false);
+      }
+    };
+    cargar();
+  }, [id]);
 
-  const handleSubmit = async (e) => {
+  const enviar = async (e) => {
     e.preventDefault();
+    setEnviando(true);
+    setError(null);
     try {
       await clasificarReclamo(id, formulario);
-      navigate(`/reclamos/${id}`);
+      navegar(`/panel/reclamos/${id}/asignar-plazo`, { replace: true });
     } catch (err) {
-      console.error('Error al clasificar:', err);
+      setError(err.mensaje || 'No se pudo clasificar el reclamo');
+    } finally {
+      setEnviando(false);
     }
   };
 
+  if (cargando) return <Cargando />;
+  if (error && !reclamo) return <Alerta tipo="error" titulo="Error">{error}</Alerta>;
+  if (!reclamo) return null;
+
+  const yaClasificado = reclamo.estado !== 'registrado';
+
   return (
-    <div className="clasificar-reclamo">
-      <h1>Clasificar Reclamo #{id}</h1>
-      <form onSubmit={handleSubmit}>
+    <div className="form-pagina">
+      <header className="pagina__encabezado">
+        <button type="button" className="btn btn--ghost" onClick={() => navegar(-1)}>
+          {icono('volver')}
+          Volver
+        </button>
         <div>
-          <label>Servicio:</label>
-          <select name="servicio" value={formulario.servicio} onChange={handleChange}>
-            <option value="agua">Agua</option>
-            <option value="luz">Luz</option>
+          <h1>Clasificar reclamo</h1>
+          <p>
+            Reclamo #{reclamo.id_reclamo} · <Badge valor={reclamo.estado} />
+          </p>
+        </div>
+      </header>
+
+      {yaClasificado && (
+        <Alerta tipo="aviso" titulo="Ya clasificado">
+          Este reclamo ya tiene servicio, categoría y urgencia asignados. Puedes ajustarlos si
+          corresponde.
+        </Alerta>
+      )}
+
+      <section className="card">
+        <h2 className="card__titulo">Descripción del ciudadano</h2>
+        <blockquote className="cita">«{reclamo.descripcion}»</blockquote>
+        <dl className="lista-datos lista-datos--horizontal">
+          <div className="lista-datos__item">
+            <dt>Recibido</dt>
+            <dd>{reclamo.fecha_recepcion}</dd>
+          </div>
+          {reclamo.direccion && (
+            <div className="lista-datos__item">
+              <dt>Dirección</dt>
+              <dd>{reclamo.direccion}</dd>
+            </div>
+          )}
+          {reclamo.barrio && (
+            <div className="lista-datos__item">
+              <dt>Barrio</dt>
+              <dd>{reclamo.barrio}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
+
+      <form className="card form-grid" onSubmit={enviar}>
+        <h2 className="card__titulo campo--ancho">Clasificación</h2>
+
+        {error && (
+          <div className="campo--ancho">
+            <Alerta tipo="error">{error}</Alerta>
+          </div>
+        )}
+
+        <div className="campo">
+          <label htmlFor="servicio">Servicio</label>
+          <select
+            id="servicio"
+            name="servicio"
+            value={formulario.servicio}
+            onChange={(e) => setFormulario({ ...formulario, servicio: e.target.value })}
+          >
+            {SERVICIOS.map(([v, t]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
-        <div>
-          <label>Categoría:</label>
-          <select name="categoria" value={formulario.categoria} onChange={handleChange}>
-            <option value="corte">Corte</option>
-            <option value="facturacion">Facturación</option>
-            <option value="fuga">Fuga</option>
-            <option value="falla_tecnica">Falla Técnica</option>
+
+        <div className="campo">
+          <label htmlFor="categoria">Categoría</label>
+          <select
+            id="categoria"
+            name="categoria"
+            value={formulario.categoria}
+            onChange={(e) => setFormulario({ ...formulario, categoria: e.target.value })}
+          >
+            {CATEGORIAS.map(([v, t]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
-        <div>
-          <label>Urgencia:</label>
-          <select name="urgencia" value={formulario.urgencia} onChange={handleChange}>
-            <option value="programada">Programada</option>
-            <option value="normal">Normal</option>
-            <option value="alta">Alta</option>
-            <option value="critica">Crítica</option>
+
+        <div className="campo">
+          <label htmlFor="urgencia">Urgencia</label>
+          <select
+            id="urgencia"
+            name="urgencia"
+            value={formulario.urgencia}
+            onChange={(e) => setFormulario({ ...formulario, urgencia: e.target.value })}
+          >
+            {URGENCIAS.map(([v, t]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
-        <button type="submit">Clasificar</button>
+
+        <div className="form-grid__acciones">
+          <button type="button" className="btn btn--outline" onClick={() => navegar(-1)}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn btn--primary" disabled={enviando}>
+            {enviando ? 'Guardando...' : 'Clasificar y asignar plazo'}
+          </button>
+        </div>
       </form>
     </div>
   );

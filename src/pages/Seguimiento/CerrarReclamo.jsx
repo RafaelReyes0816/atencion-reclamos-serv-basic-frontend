@@ -1,23 +1,15 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth, esInterno } from '../../context/AuthContext';
-import { obtenerReclamo, resolverReclamo } from '../../api/reclamos';
+import { cerrarReclamo, obtenerReclamo } from '../../api/reclamos';
 import { Alerta, Badge, Cargando } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
-const RESULTADOS = [
-  ['resuelto', 'Resuelto — se atendió la solicitud'],
-  ['descartado', 'Descartado — no aplica'],
-  ['derivado', 'Derivado — enviado a otra área'],
-];
-
-const ResolverReclamo = () => {
+const CerrarReclamo = () => {
   const { id } = useParams();
   const navegar = useNavigate();
-  const { rol } = useAuth();
 
   const [reclamo, setReclamo] = useState(null);
-  const [formulario, setFormulario] = useState({ resultado: 'resuelto', detalle: '' });
+  const [resultado, setResultado] = useState('resuelto');
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
@@ -27,7 +19,7 @@ const ResolverReclamo = () => {
       try {
         const rec = await obtenerReclamo(id);
         setReclamo(rec);
-        if (rec.resultado) setFormulario((f) => ({ ...f, resultado: rec.resultado }));
+        if (rec.resultado) setResultado(rec.resultado);
       } catch (err) {
         setError(err.mensaje || 'No se pudo cargar el reclamo');
       } finally {
@@ -42,10 +34,10 @@ const ResolverReclamo = () => {
     setEnviando(true);
     setError(null);
     try {
-      await resolverReclamo(id, formulario);
+      await cerrarReclamo(id, { resultado });
       navegar(`/panel/reclamos/${id}`, { replace: true });
     } catch (err) {
-      setError(err.mensaje || 'No se pudo resolver el reclamo');
+      setError(err.mensaje || 'No se pudo cerrar el reclamo');
     } finally {
       setEnviando(false);
     }
@@ -55,8 +47,7 @@ const ResolverReclamo = () => {
   if (error && !reclamo) return <Alerta tipo="error" titulo="Error">{error}</Alerta>;
   if (!reclamo) return null;
 
-  const yaResuelto = reclamo.estado === 'resuelto';
-  const yaCerrado = reclamo.estado === 'cerrado';
+  const puedeCerrar = reclamo.estado === 'resuelto';
 
   return (
     <div className="form-pagina">
@@ -66,22 +57,17 @@ const ResolverReclamo = () => {
           Volver
         </button>
         <div>
-          <h1>Resolver reclamo</h1>
+          <h1>Cerrar reclamo</h1>
           <p>
             Reclamo #{reclamo.id_reclamo} · <Badge valor={reclamo.estado} />
           </p>
         </div>
       </header>
 
-      {yaCerrado && (
-        <Alerta tipo="aviso" titulo="Reclamo cerrado">
-          Un reclamo cerrado no se puede volver a resolver.
-        </Alerta>
-      )}
-
-      {yaResuelto && !yaCerrado && (
-        <Alerta tipo="info" titulo="Ya está resuelto">
-          Un supervisor debe cerrarlo para completar el proceso.
+      {!puedeCerrar && (
+        <Alerta tipo="aviso" titulo="El reclamo no está listo para cerrarse">
+          Solo se puede cerrar un reclamo en estado <strong>resuelto</strong>. Este reclamo está{' '}
+          <strong>{reclamo.estado?.replaceAll('_', ' ')}</strong>. Debes resolverlo primero.
         </Alerta>
       )}
 
@@ -108,49 +94,26 @@ const ResolverReclamo = () => {
         </div>
 
         <div className="campo campo--ancho">
-          <label htmlFor="resultado">Resultado de la atención</label>
+          <label htmlFor="resultado">Resultado final</label>
           <select
             id="resultado"
             name="resultado"
-            value={formulario.resultado}
-            onChange={(e) => setFormulario({ ...formulario, resultado: e.target.value })}
+            value={resultado}
+            onChange={(e) => setResultado(e.target.value)}
             required
           >
-            {RESULTADOS.map(([v, t]) => (
-              <option key={v} value={v}>
-                {t}
-              </option>
-            ))}
+            <option value="resuelto">Resuelto</option>
+            <option value="descartado">Descartado</option>
+            <option value="derivado">Derivado</option>
           </select>
-        </div>
-
-        <div className="campo campo--ancho">
-          <label htmlFor="detalle">Detalle de lo realizado</label>
-          <textarea
-            id="detalle"
-            name="detalle"
-            rows="4"
-            maxLength="500"
-            value={formulario.detalle}
-            onChange={(e) => setFormulario({ ...formulario, detalle: e.target.value })}
-            placeholder="Describe el trabajo ejecutado, materiales usados, etc."
-            required
-          />
-          <small className="campo__ayuda">
-            Este texto queda registrado en el historial del reclamo.
-          </small>
         </div>
 
         <div className="form-grid__acciones">
           <button type="button" className="btn btn--outline" onClick={() => navegar(-1)}>
             Cancelar
           </button>
-          <button
-            type="submit"
-            className="btn btn--accent"
-            disabled={enviando || yaCerrado || (yaResuelto && !esInterno(rol))}
-          >
-            {enviando ? 'Guardando...' : 'Marcar como resuelto'}
+          <button type="submit" className="btn btn--primary" disabled={enviando || !puedeCerrar}>
+            {enviando ? 'Cerrando...' : 'Confirmar cierre'}
           </button>
         </div>
       </form>
@@ -158,4 +121,4 @@ const ResolverReclamo = () => {
   );
 };
 
-export default ResolverReclamo;
+export default CerrarReclamo;

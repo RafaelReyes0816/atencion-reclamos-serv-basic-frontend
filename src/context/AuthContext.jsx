@@ -1,54 +1,118 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { login as loginApi, register as registerApi } from '../api/auth';
 
 const AuthContext = createContext(null);
 
+const CLAVE_TOKEN = 'token';
+const CLAVE_SESION = 'sesion';
+
+const leerSesion = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_SESION)) || null;
+  } catch {
+    return null;
+  }
+};
+
+const guardarSesion = (sesion) => {
+  if (sesion) {
+    localStorage.setItem(CLAVE_TOKEN, sesion.token);
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
+  } else {
+    localStorage.removeItem(CLAVE_TOKEN);
+    localStorage.removeItem(CLAVE_SESION);
+  }
+};
+
+export const ROLES = {
+  CIUDADANO: 'ciudadano',
+  TECNICO: 'tecnico',
+  SUPERVISOR: 'supervisor',
+  ADMIN: 'admin',
+};
+
+/** Mismo criterio que INTERNO en el backend (app/Presentation/dependencies). */
+export const esInterno = (rol) =>
+  [ROLES.TECNICO, ROLES.SUPERVISOR, ROLES.ADMIN].includes(rol);
+
+/** Mismo criterio que GESTION en el backend. */
+export const esGestion = (rol) => [ROLES.SUPERVISOR, ROLES.ADMIN].includes(rol);
+
+export const ETIQUETA_ROL = {
+  ciudadano: 'Ciudadano',
+  tecnico: 'Técnico',
+  supervisor: 'Supervisor',
+  admin: 'Administrador',
+};
+
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [username, setUsername] = useState(null);
+  const [sesion, setSesion] = useState(leerSesion);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
-    }
     setCargando(false);
-  }, [token]);
+  }, []);
 
-  const login = async (documento, password) => {
+  const login = useCallback(async (documento, contrasena) => {
     try {
       setError(null);
-      const data = await loginApi(documento, password);
-      setToken(data.access_token);
-      setUsername(documento);
-      return true;
+      const data = await loginApi(documento, contrasena);
+      const nueva = {
+        token: data.access_token,
+        rol: data.rol,
+        idUsuario: data.id_usuario,
+        nombre: data.nombre,
+        documento,
+      };
+      guardarSesion(nueva);
+      setSesion(nueva);
+      return { ok: true, rol: data.rol };
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión');
-      return false;
+      const detalle =
+        err.response?.status === 401
+          ? 'Documento o contraseña incorrectos'
+          : err.response?.data?.detail || 'No se pudo conectar con el servidor';
+      setError(detalle);
+      return { ok: false, error: detalle };
     }
-  };
+  }, []);
 
-  const registrar = async (userData) => {
+  const registrar = useCallback(async (userData) => {
     try {
       setError(null);
       await registerApi(userData);
-      return true;
+      return { ok: true };
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al registrar usuario');
-      return false;
+      const detalle = err.response?.data?.detail || 'Error al registrar usuario';
+      setError(detalle);
+      return { ok: false, error: detalle };
     }
-  };
+  }, []);
 
-  const logout = () => {
-    setToken(null);
-    setUsername(null);
-  };
+  const logout = useCallback(() => {
+    guardarSesion(null);
+    setSesion(null);
+    setError(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ token, username, error, cargando, login, logout, registrar }}>
+    <AuthContext.Provider
+      value={{
+        sesion,
+        token: sesion?.token ?? null,
+        rol: sesion?.rol ?? null,
+        idUsuario: sesion?.idUsuario ?? null,
+        nombre: sesion?.nombre ?? null,
+        documento: sesion?.documento ?? null,
+        error,
+        cargando,
+        login,
+        logout,
+        registrar,
+        limpiarError: () => setError(null),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
