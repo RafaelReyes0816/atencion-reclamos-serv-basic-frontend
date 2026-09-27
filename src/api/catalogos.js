@@ -30,6 +30,11 @@ export const listarCuadrillas = async () => {
   return response.data;
 };
 
+export const cuadrillasDisponibles = async (especialidad) => {
+  const response = await api.get(`/cuadrillas/disponibles/${especialidad}`);
+  return response.data;
+};
+
 export const crearCuadrilla = async (data) => {
   const response = await api.post('/cuadrillas/', data);
   return response.data;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth, esInterno, esGestion } from '../../context/AuthContext';
 import { obtenerReclamo, obtenerComprobante } from '../../api/reclamos';
+import { obtenerDerivacion } from '../../api/seguimiento';
 import { Alerta, Badge, Cargando, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
@@ -22,13 +23,17 @@ const DetalleReclamo = () => {
   const { rol } = useAuth();
 
   const [reclamo, setReclamo] = useState(null);
+  const [derivacion, setDerivacion] = useState(null);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      setReclamo(await obtenerReclamo(id));
+      const rec = await obtenerReclamo(id);
+      setReclamo(rec);
+      const der = await obtenerDerivacion(id).catch(() => null);
+      setDerivacion(der);
       setError(null);
     } catch (err) {
       setError(err.mensaje || 'No se pudo cargar el reclamo');
@@ -100,6 +105,20 @@ const DetalleReclamo = () => {
       icono: 'check',
     });
   }
+  if (reclamo.estado === 'clasificado' && reclamo.fecha_tope && esInterno(rol)) {
+    acciones.push({
+      a: `/panel/reclamos/${id}/asignar-cuadrilla`,
+      texto: 'Asignar cuadrilla',
+      clase: 'btn--primary',
+      icono: 'seguimiento',
+    });
+    acciones.push({
+      a: `/panel/reclamos/${id}/derivar-comercial`,
+      texto: 'Derivar a comercial',
+      clase: 'btn--outline',
+      icono: 'seguimiento',
+    });
+  }
   if (reclamo.estado === 'resuelto' && esGestion(rol)) {
     acciones.push({
       a: `/panel/reclamos/${id}/cerrar`,
@@ -166,6 +185,30 @@ const DetalleReclamo = () => {
                 Normativa #{reclamo.id_normativa}
                 {reclamo.fecha_tope && ` · límite ${reclamo.fecha_tope}`}
               </p>
+            </section>
+          )}
+
+          {derivacion && (
+            <section className="card">
+              <h2 className="card__titulo">Derivación comercial</h2>
+              <dl className="lista-datos">
+                <div className="lista-datos__item">
+                  <dt>Área</dt>
+                  <dd>{derivacion.area_comercial}</dd>
+                </div>
+                <div className="lista-datos__item">
+                  <dt>Estado</dt>
+                  <dd><Badge valor={derivacion.estado_derivacion} /></dd>
+                </div>
+              </dl>
+              <Link
+                to={`/panel/reclamos/${id}/derivacion`}
+                className="btn btn--outline btn--sm btn--bloque"
+                style={{ marginTop: '0.5rem' }}
+              >
+                {icono('seguimiento')}
+                Ver detalle
+              </Link>
             </section>
           )}
 

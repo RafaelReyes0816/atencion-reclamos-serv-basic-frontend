@@ -12,6 +12,10 @@ import AsignarPlazo from './pages/Clasificacion/AsignarPlazo';
 import ResolverReclamo from './pages/Seguimiento/ResolverReclamo';
 import CerrarReclamo from './pages/Seguimiento/CerrarReclamo';
 import AvancesTrabajo from './pages/Seguimiento/AvancesTrabajo';
+import AsignarCuadrilla from './pages/Seguimiento/AsignarCuadrilla';
+import DerivarComercial from './pages/Seguimiento/DerivarComercial';
+import ListaOrdenes from './pages/Seguimiento/ListaOrdenes';
+import DetalleDerivacion from './pages/Seguimiento/DetalleDerivacion';
 import Cuadrillas from './pages/Administracion/Cuadrillas';
 import AreasComerciales from './pages/Administracion/AreasComerciales';
 import Normativa from './pages/Administracion/Normativa';
@@ -89,6 +93,38 @@ const App = () => (
             element={
               <Protegida roles={['tecnico', 'supervisor', 'admin']}>
                 <AvancesTrabajo />
+              </Protegida>
+            }
+          />
+          <Route
+            path="reclamos/:id/asignar-cuadrilla"
+            element={
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
+                <AsignarCuadrilla />
+              </Protegida>
+            }
+          />
+          <Route
+            path="reclamos/:id/derivar-comercial"
+            element={
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
+                <DerivarComercial />
+              </Protegida>
+            }
+          />
+          <Route
+            path="reclamos/:id/derivacion"
+            element={
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
+                <DetalleDerivacion />
+              </Protegida>
+            }
+          />
+          <Route
+            path="ordenes"
+            element={
+              <Protegida roles={['tecnico', 'supervisor', 'admin']}>
+                <ListaOrdenes />
               </Protegida>
             }
           />

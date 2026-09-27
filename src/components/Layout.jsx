@@ -20,6 +20,7 @@ const ENLACES = [
     patron: /^\/panel\/reclamos(\/\d+)?$/,
   },
   { a: '/panel/reclamos/nuevo', texto: 'Nuevo reclamo', icono: 'nuevo', roles: 'todos' },
+  { a: '/panel/ordenes', texto: 'Órdenes', icono: 'seguimiento', roles: ['tecnico', 'supervisor', 'admin'] },
   { a: '/panel/administracion/normativa', texto: 'Normativa', icono: 'normativa', roles: ['tecnico', 'supervisor', 'admin'] },
   { a: '/panel/administracion/cuadrillas', texto: 'Cuadrillas', icono: 'cuadrillas', roles: ['tecnico', 'supervisor', 'admin'] },
   { a: '/panel/administracion/areas-comerciales', texto: 'Áreas comerciales', icono: 'areas', roles: ['tecnico', 'supervisor', 'admin'] },

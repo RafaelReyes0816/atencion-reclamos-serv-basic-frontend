@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { obtenerReclamo } from '../../api/reclamos';
-import { obtenerOrdenPorReclamo, listarAvances, crearAvance } from '../../api/seguimiento';
+import { obtenerOrdenPorReclamo, listarAvances, crearAvance, actualizarOrden } from '../../api/seguimiento';
 import { Alerta, Badge, Cargando, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
@@ -26,6 +26,7 @@ const AvancesTrabajo = () => {
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [actualizandoOrden, setActualizandoOrden] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -73,6 +74,19 @@ const AvancesTrabajo = () => {
     }
   };
 
+  const cambiarEstadoOrden = async (nuevoEstado) => {
+    setActualizandoOrden(true);
+    setError(null);
+    try {
+      await actualizarOrden(orden.id_orden, { estado_orden: nuevoEstado });
+      setOrden({ ...orden, estado_orden: nuevoEstado });
+    } catch (err) {
+      setError(err.mensaje || 'No se pudo actualizar el estado de la orden');
+    } finally {
+      setActualizandoOrden(false);
+    }
+  };
+
   if (cargando) return <Cargando />;
 
   return (
@@ -109,6 +123,30 @@ const AvancesTrabajo = () => {
             <div>
               <small>Estado</small>
               <strong>{ESTADOS_ORDEN[orden.estado_orden] || humanizar(orden.estado_orden)}</strong>
+              {orden.estado_orden !== 'resuelta' && (
+                <div className="acciones" style={{ marginTop: '0.5rem' }}>
+                  {orden.estado_orden === 'asignada' && (
+                    <button
+                      type="button"
+                      className="btn btn--accent btn--sm"
+                      onClick={() => cambiarEstadoOrden('en_curso')}
+                      disabled={actualizandoOrden}
+                    >
+                      {actualizandoOrden ? '...' : 'Iniciar atención'}
+                    </button>
+                  )}
+                  {orden.estado_orden === 'en_curso' && (
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      onClick={() => cambiarEstadoOrden('resuelta')}
+                      disabled={actualizandoOrden}
+                    >
+                      {actualizandoOrden ? '...' : 'Marcar resuelta'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
