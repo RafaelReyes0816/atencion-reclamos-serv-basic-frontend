@@ -13,6 +13,11 @@ const TIPOS = {
   regulatorio_mensual: 'Regulatorio mensual',
 };
 
+const GENERADORES = {
+  operativo_diario: generarReporteDiario,
+  regulatorio_mensual: generarReporteMensual,
+};
+
 const Reportes = () => {
   const [reportes, setReportes] = useState([]);
   const [error, setError] = useState(null);
@@ -20,6 +25,7 @@ const Reportes = () => {
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(null);
   const [descargando, setDescargando] = useState(null);
+  const [tipo, setTipo] = useState('operativo_diario');
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -37,12 +43,12 @@ const Reportes = () => {
     cargar();
   }, [cargar]);
 
-  const generar = async (tipo, fn) => {
+  const generar = async () => {
     setGenerando(tipo);
     setError(null);
     setExito(null);
     try {
-      const r = await fn();
+      const r = await GENERADORES[tipo]();
       setExito(r.message || `Reporte ${TIPOS[tipo]} generado (ID ${r.id_reporte}).`);
       await cargar();
     } catch (err) {
@@ -87,23 +93,26 @@ const Reportes = () => {
       <section className="card">
         <h2 className="card__titulo">Generar nuevo reporte</h2>
         <div className="acciones">
+          <div className="campo">
+            <label htmlFor="tipo_reporte">Tipo de reporte</label>
+            <select
+              id="tipo_reporte"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              disabled={generando !== null}
+            >
+              <option value="operativo_diario">Operativo diario</option>
+              <option value="regulatorio_mensual">Regulatorio mensual</option>
+            </select>
+          </div>
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => generar('operativo_diario', generarReporteDiario)}
+            onClick={generar}
             disabled={generando !== null}
           >
             {icono('documento')}
-            {generando === 'operativo_diario' ? 'Generando...' : 'Reporte diario'}
-          </button>
-          <button
-            type="button"
-            className="btn btn--accent"
-            onClick={() => generar('regulatorio_mensual', generarReporteMensual)}
-            disabled={generando !== null}
-          >
-            {icono('documento')}
-            {generando === 'regulatorio_mensual' ? 'Generando...' : 'Reporte mensual'}
+            {generando ? 'Generando...' : 'Generar reporte'}
           </button>
         </div>
         <p className="card__texto">
@@ -125,7 +134,7 @@ const Reportes = () => {
           <Cargando />
         ) : reportes.length === 0 ? (
           <Vacio titulo="Sin reportes">
-            Genera el primer reporte usando los botones de arriba.
+            Genera el primer reporte usando el botón de arriba.
           </Vacio>
         ) : (
           <div className="tabla-scroll">

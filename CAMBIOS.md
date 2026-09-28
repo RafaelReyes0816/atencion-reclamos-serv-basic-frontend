@@ -2,10 +2,11 @@
 
 Registro técnico de los cambios aplicados al frontend (React 19 + Vite 8 + React Router 7 + Axios).
 
-- **Alcance:** 22 archivos modificados, 5 eliminados y 15 creados (42 en total).
-- **Balance del diff:** +8067 / −2908 líneas.
-- **Estado:** `pnpm build` correcto (109 módulos), `pnpm lint` con 0 errores, menú con un
-  solo botón activo en las 10 rutas.
+- **Alcance:** 22 archivos modificados, 5 eliminados y 15 creados (42 en total), más 4
+  modificados en la sección 16.
+- **Balance del diff:** +8067 / −2908 líneas, más +81 / −16 en la sección 16.
+- **Estado:** `pnpm build` correcto (115 módulos), `pnpm lint` con 0 errores y solo los
+  warnings preexistentes, menú con un solo botón activo en las 10 rutas.
 - **Ubicación:** `atencion-reclamos-serv-basic-frontend/`
 
 > Documento complementario de `../atencion-reclamos-serv-basic-backend/CAMBIOS.md`, que
@@ -507,6 +508,10 @@ errores de consola ni respuestas `4xx`/`5xx`.
 - Barrido de caracteres CJK en `src/`: ninguno restante.
 - `pytest` del backend: **191 passed**, código de salida `0`.
 
+> Esta es la verificación de la sección 14, en su momento. La sección 16 agrega 12 tests al
+> backend, así que la cifra vigente es **201 passed, 2 failed** (los 2 fallos son
+> preexistentes y están explicados en `backend/CAMBIOS.md`, sección 17.5).
+
 ---
 
 ## 15. Maquina de estados y flujo de atencion
@@ -589,3 +594,54 @@ Reemplaza los dos botones separados que aparecian en DetalleReclamo.
 - CSS del stepper (`.flujopasos`).
 - CSS del toast (`.toast`).
 - CSS de las cards de decision (`.eleccion-grid`, `.eleccion-card`).
+
+---
+
+## 16. Cuenta del reclamo, culminacion con avances y reportes en un boton
+
+4 archivos modificados, +81 / −16 líneas. Los cambios de API van en
+`../atencion-reclamos-serv-basic-backend/CAMBIOS.md`, sección 17.
+
+### `src/pages/Reclamos/NuevoReclamo.jsx` (modificado)
+
+- Dos campos nuevos y obligatorios: `nombre_cuenta` (3–120) y `direccion` (5–255).
+- **Se muestran vacíos, a proposito.** No se prellenan con el nombre del ciudadano ni con
+  su direccion, porque identifican la cuenta del servicio y el titular puede ser un tercero.
+  El texto de ayuda lo dice: *"Titular de la cuenta donde ocurre el problema. Puede ser
+  distinto a tu nombre."*
+- El `placeholder` de la descripcion dejo de pedir la direccion, que ahora tiene su propio
+  campo.
+
+### `src/pages/Reclamos/DetalleReclamo.jsx` (modificado)
+
+- `nombre_cuenta` y `direccion` al inicio de `CAMPOS`, para que se vean antes que el
+  servicio y la categoria.
+- El comprobante agrega dos filas mas, con `—` cuando el dato no viene.
+
+### `src/pages/Seguimiento/AvancesTrabajo.jsx` (modificado)
+
+- "Resolver reclamo" queda deshabilitado cuando `avances.length === 0`, con un `title`
+  explicativo y una linea de ayuda debajo del boton.
+- Es una guarda de conveniencia, no la garantia: el 409 lo sigue mandando el backend desde
+  `ActualizarOrdenUseCase`. La UI evita el viaje round-trip, el backend es quien decide.
+
+`src/pages/Seguimiento/ResolverReclamo.jsx` no cambio: el interceptor de `src/api/client.js`
+ya extrae `detail` de la respuesta, asi que el mensaje del 409 se muestra sin tocarlo.
+
+### `src/pages/Reportes/Reportes.jsx` (modificado)
+
+- Los dos botones de generar se reemplazaron por un selector de tipo y un solo boton.
+- El mapa `TIPOS` se reflejo en `GENERADORES`, que asocia cada tipo a su funcion, para que
+  `generar()` tome un argumento en vez de dos.
+- El boton queda deshabilitado mientras corre cualquier generacion, como antes.
+- Se conservaron los dos endpoints del backend y el scheduler automatico de las 23:00 y
+  del dia 1: la unificacion es solo de la UI.
+
+### Verificacion
+
+- `pnpm build` correcto, 115 modulos.
+- `pnpm lint` con 0 errores. Los warnings de `set-state-in-effect` en `Reportes.jsx` y
+  `AvancesTrabajo.jsx` son preexistentes: son los `useEffect` de carga de datos, y aqui solo
+  se movio de linea.
+- El frontend no tiene runner de tests, asi que la cobertura de estos cambios esta del lado
+  del backend: los 12 tests nuevos de `test_reclamos.py` y `test_seguimiento.py`.

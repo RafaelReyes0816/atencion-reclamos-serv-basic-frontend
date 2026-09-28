@@ -22,6 +22,8 @@ const NuevoReclamo = () => {
     categoria: 'corte',
     urgencia: 'normal',
     descripcion: '',
+    nombre_cuenta: '',
+    direccion: '',
   });
   const [idUsuario, setIdUsuario] = useState('');
   const [error, setError] = useState(null);
@@ -107,6 +109,40 @@ const NuevoReclamo = () => {
         )}
 
         <div className="campo">
+          <label htmlFor="nombre_cuenta">Nombre de la cuenta</label>
+          <input
+            id="nombre_cuenta"
+            type="text"
+            name="nombre_cuenta"
+            minLength="3"
+            maxLength="120"
+            value={formulario.nombre_cuenta}
+            onChange={cambiar}
+            placeholder="A nombre de quién está la cuenta"
+            required
+          />
+          <small className="campo__ayuda">
+            Titular de la cuenta donde ocurre el problema. Puede ser distinto a tu nombre.
+          </small>
+        </div>
+
+        <div className="campo">
+          <label htmlFor="direccion">Dirección</label>
+          <input
+            id="direccion"
+            type="text"
+            name="direccion"
+            minLength="5"
+            maxLength="255"
+            value={formulario.direccion}
+            onChange={cambiar}
+            placeholder="Calle 45 # 12-30"
+            required
+          />
+          <small className="campo__ayuda">Dirección donde se presenta la falla.</small>
+        </div>
+
+        <div className="campo">
           <label htmlFor="canal">Canal de atención</label>
           <select id="canal" name="canal" value={formulario.canal} onChange={cambiar}>
             <option value="web">Web</option>
@@ -157,7 +193,7 @@ const NuevoReclamo = () => {
             maxLength="1000"
             value={formulario.descripcion}
             onChange={cambiar}
-            placeholder="Describe qué ocurre, desde cuándo y en qué dirección."
+            placeholder="Describe qué ocurre y desde cuándo."
             required
           />
           <small className="campo__ayuda">{formulario.descripcion.length}/1000 caracteres</small>

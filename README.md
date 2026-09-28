@@ -39,8 +39,8 @@ pnpm install
 Hay dos terminales abiertas a la vez.
 
 ```bash
-# Terminal 1 — backend (en ../atencion-reclamos-serv-basic-backend)
-uvicorn app.main:app --reload --port 8000
+# Terminal 1 — backend (en ../backend; las dependencias viven en backend/venv)
+cd ../backend && ./venv/bin/python -m uvicorn app.main:app --reload --port 8000
 
 # Terminal 2 — frontend (en este directorio)
 pnpm dev
@@ -52,8 +52,10 @@ pnpm dev
 | Backend | http://127.0.0.1:8000 |
 | Documentación API (Swagger) | http://127.0.0.1:8000/docs |
 
-> Usa siempre `127.0.0.1` y no `localhost`: el backend solo permite el origen
-> `http://localhost:5173` en CORS, y son orígenes distintos para el navegador.
+> Usa siempre `127.0.0.1` y no `localhost`. Vite 8 sin `host: '127.0.0.1'` escucha solo en
+> IPv6 y `127.0.0.1:5173` no responde. El backend solo permite `http://localhost:5173` en
+> CORS, pero eso no molesta en el flujo normal: el proxy reenvía desde el servidor y el
+> navegador nunca ve un origen distinto.
 
 ## Otros comandos
 
@@ -70,8 +72,8 @@ que el build de producción se puede probar sin tocar nada más.
 
 ## Cuentas de prueba
 
-Las crea `python -m scripts.seed` en el backend. **Todas usan la contraseña
-`clave123`.**
+Las crea el script de seed del backend (`backend/scripts/seed.py`). **Todas usan la
+contraseña `clave123`.**
 
 | Rol | Documento | Contraseña | Puede hacer |
 |---|---|---|---|
@@ -83,9 +85,13 @@ Las crea `python -m scripts.seed` en el backend. **Todas usan la contraseña
 Para cargar los datos de nuevo:
 
 ```bash
-python -m scripts.seed            # crea solo lo que falte
-python -m scripts.seed --reset    # recarga los datos de prueba
+cd ../backend
+./venv/bin/python -m scripts.seed            # crea solo lo que falte
+./venv/bin/python -m scripts.seed --reset    # recarga los datos de prueba
 ```
+
+Usa `./venv/bin/python` y no el `python` del sistema: las dependencias viven en
+`backend/venv`, y con el intérprete equivocado los imports fallan.
 
 > Estas cuentas son de desarrollo. Antes de cualquier despliegue hay que cambiar las
 > contraseñas y rotar `SECRET_KEY`.
@@ -104,12 +110,21 @@ inmediato, sin necesidad de invalidar su token.
 | Registrar y consultar reclamos propios | Sí | Sí | Sí | Sí |
 | Ver todos los reclamos | No | Sí | Sí | Sí |
 | Clasificar, resolver, registrar avances | No | Sí | Sí | Sí |
-| Asignar plazo normativo | No | No | Sí | Sí |
+| Asignar plazo normativo | No | Sí | Sí | Sí |
 | Cerrar y verificar reclamos | No | No | Sí | Sí |
 | Escribir catálogos (cuadrillas, áreas, normativa) | No | No | Sí | Sí |
 | Reportes y dashboard de gestión | No | No | Sí | Sí |
 | CRUD de usuarios | No | No | Sí | Sí |
 | Eliminar reclamos | No | No | No | Sí |
+
+> **Discrepancia conocida en "Asignar plazo normativo".** La tabla refleja lo que hace el
+> código hoy: `PUT /reclamos/{id}/asignar-plazo` está gateado con `require_roles(*INTERNO)`,
+> que incluye al técnico. Pero la matriz de permisos de `docs/API.md` y la del propio
+> `test_matriz_de_permisos` dicen que ese endpoint debería ser de `GESTION`
+> (supervisor y admin). El técnico atraviesa el gate y recibe 404 en vez de 403, que es lo
+> que hace fallar
+> `tests/test_permisos.py::test_matriz_de_permisos[asignar_plazo-tecnico]`. Está pendiente
+> decidir si se sube el endpoint a `GESTION` o se corrige la matriz.
 
 `POST /auth/register` es público pero **siempre** crea un `ciudadano`; ignora el `rol` del
 body. Solo `POST /usuarios/` (admin) permite crear usuarios con otro rol.
@@ -134,7 +149,9 @@ frontend/
 │   ├── components/
 │   │   ├── Layout.jsx         Sidebar, barra superior y drawer móvil
 │   │   ├── UI.jsx             Botón, Campo, Tarjeta, Alerta, Tabla, Badge…
-│   │   └── Iconos.jsx         Iconos SVG en línea
+│   │   ├── Iconos.jsx         Iconos SVG en línea
+│   │   ├── FlujoReclamo.jsx   Stepper del recorrido de un reclamo
+│   │   └── Toast.jsx          Aviso efímero de resultado de una acción
 │   ├── context/
 │   │   └── AuthContext.jsx    Sesión, login/logout y helpers de rol
 │   ├── pages/
@@ -226,6 +243,17 @@ Tras el login se guardan dos claves en `localStorage`: `token` (para Axios) y `s
 - **Rutas en `RUTAS_API`:** si agregas un endpoint nuevo al backend, agrégalo también a
   `vite.config.js`, o el proxy no lo reenviará. El mismo array se usa en `server` y en
   `preview`.
+- **`nombre_cuenta` y `direccion` identifican la cuenta, no al ciudadano.** Son obligatorios
+  en el formulario de nuevo reclamo y se dejan vacíos a propósito, sin prellenar con el
+  nombre ni la dirección del usuario: el titular de la cuenta del servicio puede ser un
+  tercero. Viven en el reclamo, mientras que teléfono y correo se escriben en el usuario,
+  así que `PUT /reclamos/{id}/contacto` toca las dos tablas.
+- **No se puede resolver un reclamo con avances sin registrar.** El botón "Resolver
+  reclamo" se deshabilita cuando la orden no tiene avances. La garantía real está en el
+  backend, que responde 409; el frontend solo evita el viaje innecesario.
+- **Reportes tiene un solo botón.** Un selector de tipo (operativo diario o regulatorio
+  mensual) y una acción. Los dos endpoints del backend y la generación automática del
+  scheduler se mantienen: la unificación es de la interfaz, no del API.
 
 ## Problemas frecuentes
 
@@ -238,8 +266,12 @@ Vite 8 escucha solo en IPv6. El `host: '127.0.0.1'` de `vite.config.js` ya lo co
 si quitaste esa línea, vuelve a ponerla.
 
 **Todos los endpoints dan error de CORS.**
-Estás abriendo el frontend por `localhost` pero el origen permitido es
-`http://127.0.0.1:5173`, o al revés. Usa siempre la misma forma en ambos extremos.
+Casi nunca pasa por el flujo normal, porque el proxy de Vite reenvía al backend desde el
+servidor y el navegador nunca ve un origen distinto: no hay solicitud cross-origin. Solo
+aparece si el frontend llama al backend directamente, y entonces hay que mirar el origen
+real: el backend solo permite `http://localhost:5173` (`allow_origins` en
+`app/Presentation/api/__init__.py`), mientras que Vite escucha en `http://127.0.0.1:5173`.
+Si cambias el puerto o el host de uno de los dos lados, actualiza los dos.
 
 **El login responde 422.**
 El backend espera `application/x-www-form-urlencoded`, no JSON. `src/api/auth.js` ya lo
