@@ -15,6 +15,9 @@ const Cuadrillas = () => {
   const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  // Aviso de consecuencia: la operacion se hizo, pero deja la cuadrilla en un
+  // estado que el supervisor debe conocer.
+  const [aviso, setAviso] = useState(null);
   // El alta se confirma en ventana emergente; editar y eliminar siguen con alerta
   // en linea porque son cambios de menor consecuencia.
   const [creada, setCreada] = useState(null);
@@ -48,12 +51,25 @@ const Cuadrillas = () => {
     setError(null);
     setExito(null);
     try {
-      const cuerpo = { ...formulario, capacidad: parseInt(formulario.capacidad) };
+      const nuevaCapacidad = parseInt(formulario.capacidad);
+      const cuerpo = { ...formulario, capacidad: nuevaCapacidad };
       if (editando) {
-        await actualizarCuadrilla(editando, cuerpo);
+        const actualizada = await actualizarCuadrilla(editando, cuerpo);
+        // Bajar la capacidad por debajo de la carga actual se acepta, pero no
+        // en silencio: la cuadrilla queda sin cupo hasta que se resuelva
+        // trabajo o se vuelva a ampliar.
+        if (!actualizada.disponible && actualizada.ordenes_activas > actualizada.capacidad) {
+          setAviso(
+            `La capacidad quedó por debajo de las ${actualizada.ordenes_activas} órdenes activas. ` +
+              'La cuadrilla no aceptará asignaciones nuevas hasta que se resuelva trabajo en curso o se amplíe el tope.'
+          );
+        } else {
+          setAviso(null);
+        }
         setExito('Cuadrilla actualizada.');
       } else {
         const creada = await crearCuadrilla(cuerpo);
+        setAviso(null);
         setCreada(creada);
       }
       limpiar();
@@ -66,6 +82,9 @@ const Cuadrillas = () => {
   };
 
   const editar = (c) => {
+    // El aviso anterior hablaba de otra cuadrilla: se retira al abrir un
+    // formulario nuevo, no al guardar, para que el usuario pueda leerlo primero.
+    setAviso(null);
     setFormulario({
       nombre: c.nombre,
       especialidad: c.especialidad,
@@ -102,12 +121,13 @@ const Cuadrillas = () => {
       </header>
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
+      {aviso && <Alerta tipo="aviso" titulo="Capacidad ajustada" onCerrar={() => setAviso(null)}>{aviso}</Alerta>}
       {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
 
       {creada && (
         <Modal titulo="Cuadrilla registrada" onCerrar={() => setCreada(null)}>
           La cuadrilla <strong>{creada.nombre}</strong> quedó creada con una capacidad
-          de <strong>{creada.capacidad}</strong> trabajo(s) simultáneo(s) y ya está
+          de <strong>{creada.capacidad}</strong> órdenes activas simultáneas y ya está
           disponible para asignar.
         </Modal>
       )}
@@ -154,7 +174,7 @@ const Cuadrillas = () => {
           </div>
 
           <div className="campo">
-            <label htmlFor="capacidad">Capacidad de atención</label>
+            <label htmlFor="capacidad">Órdenes activas simultáneas</label>
             <input
               id="capacidad"
               type="number"
@@ -202,8 +222,15 @@ const Cuadrillas = () => {
                   </div>
                   <dl className="tarjeta__datos">
                     <div>
-                      <dt>Capacidad</dt>
-                      <dd>{c.capacidad} personas</dd>
+                      <dt>Órdenes activas</dt>
+                      {/* La carga y el tope juntos: "capacidad 3" sin el 1 de 3
+                          no dice si la cuadrilla puede tomar trabajo hoy. */}
+                      <dd>
+                        {c.ordenes_activas} de {c.capacidad}
+                        {!c.disponible && (
+                          <span className="carga__estado"> sin cupo</span>
+                        )}
+                      </dd>
                     </div>
                     <div>
                       <dt>Contacto</dt>
