@@ -150,12 +150,22 @@ const AvancesTrabajo = () => {
                       type="button"
                       className="btn btn--primary btn--sm"
                       onClick={() => cambiarEstadoOrden('resuelta')}
-                      disabled={actualizandoOrden}
+                      disabled={actualizandoOrden || avances.length === 0}
+                      title={
+                        avances.length === 0
+                          ? 'Registra al menos un avance antes de resolver la orden'
+                          : undefined
+                      }
                     >
                       {actualizandoOrden ? '...' : 'Resolver reclamo'}
                     </button>
                   )}
                 </div>
+              )}
+              {orden.estado_orden === 'en_curso' && avances.length === 0 && (
+                <p className="card__texto card__texto--vacio">
+                  Para resolver la orden debes registrar al menos un avance del trabajo.
+                </p>
               )}
             </div>
           </div>

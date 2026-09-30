@@ -8,7 +8,9 @@ import FlujoReclamo from '../../components/FlujoReclamo';
 import { icono } from '../../components/Iconos';
 
 const CAMPOS = [
-  ['servicio', 'Cuenta'],
+  ['nombre_cuenta', 'Cuenta'],
+  ['direccion', 'Dirección'],
+  ['servicio', 'Servicio'],
   ['numero_medidor', 'Número de medidor'],
   ['categoria', 'Categoría'],
   ['urgencia', 'Urgencia'],
@@ -257,7 +259,15 @@ const DetalleReclamo = () => {
                 </div>
                 <div className="comprobante__fila">
                   <small>Cuenta</small>
-                  <strong>{comprobante.servicio === 'agua' ? 'Agua' : 'Luz eléctrica'}</strong>
+                  <strong>{comprobante.nombre_cuenta || '—'}</strong>
+                </div>
+                <div className="comprobante__fila">
+                  <small>Dirección</small>
+                  <strong>{comprobante.direccion || '—'}</strong>
+                </div>
+                <div className="comprobante__fila">
+                  <small>Servicio</small>
+                  <strong>{comprobante.servicio}</strong>
                 </div>
                 {comprobante.numero_medidor && (
                   <div className="comprobante__fila">
