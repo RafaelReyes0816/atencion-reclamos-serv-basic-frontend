@@ -20,8 +20,11 @@ export const generarReporteDiario = async () => {
   return response.data;
 };
 
-export const generarReporteMensual = async () => {
-  const response = await api.post('/reportes/mensual');
+export const generarReporteMensual = async (periodo) => {
+  // Sin periodo el backend usa el mes anterior; se envia solo si se eligio uno.
+  const response = periodo
+    ? await api.post('/reportes/mensual', null, { params: { periodo } })
+    : await api.post('/reportes/mensual');
   return response.data;
 };
 
