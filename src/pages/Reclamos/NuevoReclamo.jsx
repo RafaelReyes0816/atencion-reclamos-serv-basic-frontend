@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, esInterno as esInternoRol } from '../../context/AuthContext';
 import { crearReclamo } from '../../api/reclamos';
 import { listarMedidores, listarMedidoresDeCiudadanos } from '../../api/medidores';
+import { obtenerUsuario } from '../../api/usuarios';
 import { Alerta, Modal } from '../../components/UI';
+import Autocompletado from '../../components/Autocompletado';
 import { icono } from '../../components/Iconos';
 
 const SERVICIOS = ['agua', 'luz'];
@@ -14,6 +16,16 @@ const CATEGORIAS_POR_SERVICIO = {
 };
 
 const ETIQUETA_SERVICIO = { agua: 'Agua', luz: 'Luz eléctrica' };
+
+/**
+ * Cada cliente tiene un medidor por servicio, asi que cuando hay un solo
+ * candidato no hay nada que decidir y se elige solo. Con mas de uno se deja en
+ * blanco: son suministro distintos y adivinar seria peor que preguntar.
+ */
+const medidorPorDefecto = (medidores, servicio) => {
+  const delServicio = medidores.filter((m) => m.servicio === servicio);
+  return delServicio.length === 1 ? String(delServicio[0].id_medidor) : '';
+};
 
 const NuevoReclamo = () => {
   const navegar = useNavigate();
@@ -30,26 +42,32 @@ const NuevoReclamo = () => {
     direccion: '',
   });
   const [ciudadano, setCiudadano] = useState('');
+  const [busqueda, setBusqueda] = useState('');
   const [ciudadanos, setCiudadanos] = useState([]);
   const [medidores, setMedidores] = useState([]);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [cargandoCiudadanos, setCargandoCiudadanos] = useState(false);
   const [cargandoMedidores, setCargandoMedidores] = useState(false);
 
   const interno = esInternoRol(rol);
 
-  // El backend entrega los medidores listos para elegir, con su numero. El
-  // ciudadano nunca escribe el numero: selecciona el suyo.
+  // El backend entrega los ciudadanos con sus medidores y su direccion, que es lo
+  // que el formulario necesita para no escribir nada a mano por ventanilla.
   useEffect(() => {
     if (!interno) return undefined;
     let vigente = true;
+    setCargandoCiudadanos(true);
     listarMedidoresDeCiudadanos()
       .then((datos) => {
         if (vigente) setCiudadanos(datos);
       })
       .catch((err) => {
         if (vigente) setError(detalleDe(err, 'No se pudo cargar la lista de ciudadanos'));
+      })
+      .finally(() => {
+        if (vigente) setCargandoCiudadanos(false);
       });
     return () => {
       vigente = false;
@@ -75,29 +93,90 @@ const NuevoReclamo = () => {
     };
   }, [interno]);
 
+  // El ciudadano escribe una sola vez sus datos: el perfil los tiene y no hay que
+  // copiarlos a mano. Si la lectura falla, el formulario sigue vacio y el
+  // ciudadano los escribe, que es lo que se hacia antes.
+  useEffect(() => {
+    if (interno || !miId) return undefined;
+    let vigente = true;
+    obtenerUsuario(miId)
+      .then((perfil) => {
+        if (!vigente) return;
+        setFormulario((f) => ({
+          ...f,
+          nombre_cuenta: f.nombre_cuenta || perfil.nombre || '',
+          direccion: f.direccion || perfil.direccion || '',
+        }));
+      })
+      .catch(() => {
+        /* Solo servia para prellenar: el reclamo se registra igual. */
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [interno, miId]);
+
   const seleccionado = useMemo(
     () => ciudadanos.find((c) => String(c.id_usuario) === String(ciudadano)) || null,
     [ciudadanos, ciudadano]
   );
 
+  const opcionesCiudadanos = useMemo(
+    () =>
+      ciudadanos.map((c) => ({
+        id: c.id_usuario,
+        etiqueta: c.nombre,
+        detalle: c.documento,
+      })),
+    [ciudadanos]
+  );
+
   // Al cambiar de ciudadano se recargan sus medidores, que ya vinieron en el
-  // listado: no hace falta otra peticion.
+  // listado: no hace falta otra peticion. Nombre y direccion tambien se prellenan
+  // con los del titular, pero siguen editables porque la cuenta del servicio puede
+  // estar a nombre de un tercero.
   useEffect(() => {
     if (!interno) return;
     setMedidores(Array.isArray(seleccionado?.medidores) ? seleccionado.medidores : []);
+    setFormulario((f) => ({
+      ...f,
+      nombre_cuenta: seleccionado?.nombre || f.nombre_cuenta,
+      direccion: seleccionado?.direccion || f.direccion,
+    }));
   }, [interno, seleccionado]);
 
   // El medidor pertenece al cliente y a un solo servicio, asi que se recalcula
   // cada vez que cambia cualquiera de los dos.
+  useEffect(() => {
+    setFormulario((f) => {
+      const vigente = medidores.some(
+        (m) => String(m.id_medidor) === String(f.id_medidor) && m.servicio === f.servicio
+      );
+      if (vigente) return f;
+      return { ...f, id_medidor: medidorPorDefecto(medidores, f.servicio) };
+    });
+  }, [medidores, formulario.servicio]);
+
+  // El medidor elegido solo alimenta el texto de ayuda del campo.
   const medidorElegido = useMemo(
     () => medidores.find((m) => String(m.id_medidor) === String(formulario.id_medidor)) || null,
     [medidores, formulario.id_medidor]
   );
 
-  const elegirCiudadano = (e) => {
-    const { value } = e.target;
-    setCiudadano(value);
-    setFormulario((f) => ({ ...f, id_medidor: '' }));
+  const buscarCiudadano = (texto) => {
+    setBusqueda(texto);
+    // Teclear sobre un ciudadano ya elegido lo descarta: el nombre en pantalla ya
+    // no es el que se eligio. Nombre de cuenta y direccion se dejan como estan,
+    // porque son editables y puede que el operador ya los haya corregido a mano.
+    if (seleccionado && texto !== seleccionado.nombre) {
+      setCiudadano('');
+      setMedidores([]);
+    }
+  };
+
+  const elegirCiudadano = (opcion) => {
+    setBusqueda(opcion.etiqueta);
+    setCiudadano(String(opcion.id));
   };
 
   const cambiar = (e) => {
@@ -108,7 +187,6 @@ const NuevoReclamo = () => {
         return {
           ...f,
           servicio: value,
-          id_medidor: '',
           categoria: categorias.includes(f.categoria) ? f.categoria : categorias[0],
         };
       }
@@ -120,9 +198,15 @@ const NuevoReclamo = () => {
 
   const enviar = async (e) => {
     e.preventDefault();
-    setEnviando(true);
     setError(null);
     setExito(null);
+    // El buscador acepta texto libre, asi que llegar aqui con el campo lleno no
+    // garantiza que haya un ciudadano elegido de verdad.
+    if (interno && !seleccionado) {
+      setError('Elige un ciudadano de la lista para continuar');
+      return;
+    }
+    setEnviando(true);
     try {
       // El schema exige id_usuario siempre; el backend valida que un ciudadano
       // solo registre a su propio nombre.
@@ -168,20 +252,23 @@ const NuevoReclamo = () => {
 
       <form className="card form-grid" onSubmit={enviar}>
         {interno && (
-          <div className="campo campo--ancho">
-            <label htmlFor="ciudadano">Ciudadano que presenta el reclamo</label>
-            <select id="ciudadano" value={ciudadano} onChange={elegirCiudadano} required>
-              <option value="">Selecciona un ciudadano...</option>
-              {ciudadanos.map((c) => (
-                <option key={c.id_usuario} value={c.id_usuario}>
-                  {c.nombre} — {c.documento}
-                </option>
-              ))}
-            </select>
-            <small className="campo__ayuda">
-              Como usuario interno puedes registrar el reclamo a nombre de cualquier ciudadano.
-            </small>
-          </div>
+          <Autocompletado
+            id="ciudadano"
+            className="campo--ancho"
+            etiqueta="Ciudadano que presenta el reclamo"
+            opciones={opcionesCiudadanos}
+            valor={busqueda}
+            onCambiar={buscarCiudadano}
+            onElegir={elegirCiudadano}
+            marcador="Busca por nombre o documento"
+            requerido
+            deshabilitado={cargandoCiudadanos}
+            ayuda={
+              seleccionado
+                ? `Documento ${seleccionado.documento}. Al elegirlo se llenan la cuenta, la dirección y el medidor.`
+                : 'Como usuario interno puedes registrar el reclamo a nombre de cualquier ciudadano.'
+            }
+          />
         )}
 
         <div className="campo">
@@ -198,7 +285,9 @@ const NuevoReclamo = () => {
             required
           />
           <small className="campo__ayuda">
-            Titular de la cuenta donde ocurre el problema. Puede ser distinto a tu nombre.
+            {seleccionado
+              ? `Cargado con el nombre de ${seleccionado.nombre}. Edítalo si la cuenta está a nombre de otra persona.`
+              : 'Titular de la cuenta donde ocurre el problema. Puede ser distinto a tu nombre.'}
           </small>
         </div>
 
@@ -215,7 +304,12 @@ const NuevoReclamo = () => {
             placeholder="Calle 45 # 12-30"
             required
           />
-          <small className="campo__ayuda">Dirección donde se presenta la falla.</small>
+          <small className="campo__ayuda">
+            Dirección donde se presenta la falla.
+            {interno && seleccionado?.direccion
+              ? ' Cargada con la dirección que tiene registrada el ciudadano.'
+              : ''}
+          </small>
         </div>
 
         <div className="campo">
@@ -267,7 +361,7 @@ const NuevoReclamo = () => {
             {interno && !seleccionado
               ? 'Los medidores son los que tiene dados de alta ese ciudadano.'
               : medidorElegido
-                ? `Medidor de ${ETIQUETA_SERVICIO[formulario.servicio].toLowerCase()} de la cuenta.`
+                ? `Medidor ${medidorElegido.numero} de ${ETIQUETA_SERVICIO[formulario.servicio].toLowerCase()}, seleccionado.`
                 : `Solo se muestran los medidores de ${ETIQUETA_SERVICIO[formulario.servicio].toLowerCase()}.`}
           </small>
         </div>

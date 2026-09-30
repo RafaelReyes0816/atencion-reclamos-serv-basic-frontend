@@ -798,6 +798,90 @@ onChange={(e) => aplicarFiltros({ estado: e.target.value, estados: '' })}
 | Imports sin usar | ninguno en los 12 archivos tocados |
 | Endpoints por proxy | `/medidores/` responde 200 con token, 401 sin el |
 
+---
+
+## 21. Buscar al ciudadano y cargar sus datos en el formulario
+
+3 archivos nuevos o modificados en el frontend, 2 en el backend.
+
+El formulario de nuevo reclamo obligaba a escribir a mano el nombre de la cuenta y la
+direccion, y a recorrer un `<select>` con todos los ciudadanos para llegar al ultimo. Ahora
+se busca al ciudadano escribiendo, y al elegirlo se llenan los tres datos que ya estan en
+el sistema: **nombre de la cuenta, direccion y medidor**.
+
+### `src/components/Autocompletado.jsx` (nuevo)
+
+Campo de texto con sugerencias, para cuando el backend no tiene un endpoint de busqueda
+por texto y la lista ya esta en memoria.
+
+- **Filtro en el navegador** sobre `opciones` (`{ id, etiqueta, detalle }`), sin peticiones
+  por tecla. `normalizar()` descompone con `NFD` y quita los diacriticos, asi que "jose"
+  encuentra a "Jose" y "CALLE 45" a "calle 45".
+- **Teclado**: `ArrowDown` / `ArrowUp` mueven el resaltado con vuelta al principio,
+  `Enter` elige y llama a `preventDefault` para que el formulario no se envie antes de
+  elegir, `Escape` cierra.
+- **Raton**: `mousedown` con `preventDefault` en cada opcion, para que el input no pierda el
+  foco (si lo pierde, el `blur` cerraria la lista antes de que corra el `click`).
+- **Clic fuera**: un unico listener en `document` mientras la lista esta abierta, montado
+  sobre la caja y no sobre el `document`, para que no se re-suscriba en cada tecla.
+- **A11y**: `role="combobox"` con `aria-expanded`, `aria-controls`, `aria-autocomplete` y
+  `aria-activedescendant`; la lista es `role="listbox"` y cada opcion `role="option"` con
+  `aria-selected`. No hay ningun `tabindex` en las opciones: el foco nunca sale del input.
+- Muestra las primeras 8 sugerencias y un aviso cuando no hay coincidencias.
+
+### `src/index.css` (modificado)
+
+Bloque `Autocompletado` al final de la seccion de formularios. **Los selectores llevan
+`.campo` adelante a proposito** (`.campo .autocompletado__caja input`): sin eso,
+`.campo input`, que esta mas arriba en el archivo, gana por orden y le devuelve al input su
+borde y su padding, partiendo la caja en dos. La lista es `position: absolute` y se ancla a
+la caja, no al campo, para caer justo debajo del borde.
+
+### `src/pages/Reclamos/NuevoReclamo.jsx` (modificado)
+
+- El `<select>` de "Ciudadano que presenta el reclamo" se reemplaza por el
+  `Autocompletado`, con placeholder **"Busca por nombre o documento"**. El filtro cubre
+  nombre y documento.
+- Al elegir a un ciudadano se prellenan `nombre_cuenta` y `direccion` con los suyos, y sus
+  medidores pasan a ser los unicos que se ofrecen.
+- **El medidor se elige solo cuando hay un solo candidato** para el servicio
+  (`medidorPorDefecto`). Con dos o mas se deja en blanco. Como el backend da de alta un
+  medidor por servicio, en la practica casi siempre hay uno y el campo se resuelve solo.
+  El efecto recalcula el valor cuando cambia el ciudadano o el servicio, y respeta una
+  eleccion manual mientras siga siendo valida para ese servicio.
+- **Ciudadano (rol `ciudadano`)**: no hay lista que buscar, asi que sus datos se prellenan
+  con `GET /usuarios/{id}` y sus medidores con `GET /medidores/`. Si el perfil no se puede
+  leer, el `.catch` no molesta al usuario: el formulario sigue vacio y se escribe a mano.
+- **Teclear sobre un ciudadano ya elegido lo descarta** (`buscarCiudadano` compara el texto
+  con `seleccionado.nombre`). Se vacian los medidores, pero `nombre_cuenta` y `direccion` se
+  dejan como estan: son editables y puede que el operador ya los haya corregido.
+- `enviar` valida que haya un ciudadano **elegido**, no solo texto en la caja. Sin esta
+  guarda, escribir cualquier cosa y darle a registrar mandaba `id_usuario: NaN` al backend.
+
+### `README.md` (modificado)
+
+Se reescribio la decision de "`nombre_cuenta` y `direccion` se dejan vacios a proposito": ahora
+se prellenan pero siguen editables, y se documento el criterio del medidor automatico.
+
+### Cambios de API (backend)
+
+`GET /medidores/ciudadanos` agrega `direccion` al ciudadano. Sin ese campo el formulario no
+tenia de donde sacarla, y la alternativa era una llamada a `GET /usuarios/{id}` por cada
+seleccion, que ademas devuelve 403 al rol `tecnico` (`_verificar_acceso` solo deja pasar a
+los roles de `GESTION`). Va en la misma respuesta y con default `""` para no romper a un
+cliente que ya este consumiendo el endpoint. Detalle en
+`../atencion-reclamos-serv-basic-backend/CAMBIOS.md`.
+
+---
+
+## 22. Verificacion de esta tanda
+
+| Check | Resultado |
+|---|---|
+| `pytest tests/test_medidores.py` (backend) | 13 passed, salida 0 |
+| `pnpm lint` | 0 errores, solo warnings preexistentes de `set-state-in-effect` |
+| `pnpm build` | salida 0, 117 modulos |
+
 ### Pendiente conocido, no implementado
 
 - **No hay pantalla de registro publico.** El backend expone `POST /auth/register` y

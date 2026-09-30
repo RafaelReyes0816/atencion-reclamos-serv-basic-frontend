@@ -244,10 +244,20 @@ Tras el login se guardan dos claves en `localStorage`: `token` (para Axios) y `s
   `vite.config.js`, o el proxy no lo reenviará. El mismo array se usa en `server` y en
   `preview`.
 - **`nombre_cuenta` y `direccion` identifican la cuenta, no al ciudadano.** Son obligatorios
-  en el formulario de nuevo reclamo y se dejan vacíos a propósito, sin prellenar con el
-  nombre ni la dirección del usuario: el titular de la cuenta del servicio puede ser un
-  tercero. Viven en el reclamo, mientras que teléfono y correo se escriben en el usuario,
-  así que `PUT /reclamos/{id}/contacto` toca las dos tablas.
+  en el formulario de nuevo reclamo y se prellenan con los datos del titular elegido, pero
+  quedan editables: el titular de la cuenta del servicio puede ser un tercero. Viven en el
+  reclamo, mientras que teléfono y correo se escriben en el usuario, así que
+  `PUT /reclamos/{id}/contacto` toca las dos tablas.
+- **Buscar ciudadano es un `Autocompletado`, no un `<select>`.** El backend no tiene
+  endpoint de búsqueda por texto, así que `src/components/Autocompletado.jsx` filtra en el
+  navegador la lista que ya vino en `GET /medidores/ciudadanos`. El filtro ignora
+  acentos y mayúsculas, y funciona con flechas, Enter y Escape. Para el ciudadano (rol
+  `ciudadano`) no hay lista que buscar: se prellenan sus datos con `GET /usuarios/{id}` y
+  sus medidores con `GET /medidores/`.
+- **El medidor se elige solo cuando no hay decisión que tomar.** Como cada cliente tiene un
+  medidor por servicio, si hay un solo candidato para el servicio elegido se selecciona
+  automáticamente. Con dos o más se deja en blanco, porque adivinar sería peor que
+  preguntar.
 - **No se puede resolver un reclamo con avances sin registrar.** El botón "Resolver
   reclamo" se deshabilita cuando la orden no tiene avances. La garantía real está en el
   backend, que responde 409; el frontend solo evita el viaje innecesario.
