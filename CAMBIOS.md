@@ -589,3 +589,163 @@ Reemplaza los dos botones separados que aparecian en DetalleReclamo.
 - CSS del stepper (`.flujopasos`).
 - CSS del toast (`.toast`).
 - CSS de las cards de decision (`.eleccion-grid`, `.eleccion-card`).
+
+---
+
+## 16. Medidores en la interfaz
+
+Cada cuenta tiene un medidor de agua y uno de luz, dados de alta por el backend al
+crear el usuario. El frontend solo los muestra y deja editarlos.
+
+### `src/api/medidores.js` (nuevo)
+
+Cliente HTTP de `/medidores/`, con dos funciones:
+
+| Funcion | Endpoint | Quien la usa |
+|---|---|---|
+| `listarMedidores(idUsuario)` | `GET /medidores/` | `MiPerfil` y `NuevoReclamo` |
+| `listarMedidoresDeCiudadanos()` | `GET /medidores/ciudadanos` | `NuevoReclamo` en rol interno |
+
+Ambas normalizan la respuesta con `comoLista()`: si el backend devolviera algo que no
+es un array, se devuelve `[]` en lugar de propagar el error y romper el `.find()` del
+formulario.
+
+### `src/pages/Reclamos/NuevoReclamo.jsx` (modificado)
+
+- El ciudadano selecciona **su** medidor del servicio que eligio; el backend devuelve
+  los dos al cargar la pagina.
+- El rol interno selecciona primero el ciudadano (con sus medidores ya anidados en la
+  respuesta) y despues el medidor, sin una peticion extra por cambio.
+- `id_medidor` se envia con `parseInt`. Antes se mandaba el numero escrito a mano.
+- Un estado `exito` que se renderizaba pero nunca se asignaba: ahora guarda el reclamo
+  creado y muestra el modal de confirmacion.
+
+### `src/pages/MiPerfil.jsx` (modificado)
+
+- Seccion **"Mis medidores"**: lista el agua y la luz del ciudadano con su numero.
+- El numero se puede corregir (el backend lo permite al dueno de la cuenta).
+- Se renombro `setOk` a `setExito` para seguir la convencion del resto de paginas.
+
+### `src/index.css` (modificado)
+
+- `.servicio--agua` / `.servicio--luz`: insignias de color por servicio en el selector
+  de medidor y en la tabla de reclamos.
+
+---
+
+## 17. Modal de confirmacion en las altas
+
+### `src/components/UI.jsx` (modificado)
+
+Se agrego el componente `Modal`, junto a `Alerta`, `Badge`, `Vacio` y `Cargando`:
+
+```jsx
+<Modal titulo="Usuario creado" onCerrar={() => setCreado(null)}>
+  El usuario <strong>{creado.documento}</strong> quedo registrado con el rol{' '}
+  <strong>{humanizar(creado.rol)}</strong>.
+</Modal>
+```
+
+Comportamiento:
+
+- `role="dialog"` y `aria-modal="true"`, con el foco en el boton al abrir.
+- Cierra con `Escape`, con click fuera y con el boton **Entendido**.
+- Bloquea el scroll del fondo mientras esta abierto.
+- Icono de check por tipo (`--exito`, `--info`, `--error`).
+
+**Criterio de uso:** el modal se reserva para el **exito de un alta o registro**, donde
+el datoimporta y hay que leerlo con calma (numero de reclamo, fecha limite, documento
+creado). Los errores y las ediciones o eliminaciones siguen con `Alerta` en linea, que
+se puede leer sin cortar el trabajo.
+
+### Paginas con modal
+
+| Pagina | Confirma | Luego |
+|---|---|---|
+| `Administracion/Usuarios.jsx` | documento y rol del usuario creado | se queda en la lista |
+| `Reclamos/NuevoReclamo.jsx` | `#id` y estado del reclamo | abre el detalle |
+| `Administracion/Cuadrillas.jsx` | nombre y capacidad | se queda en la lista |
+| `Administracion/Normativa.jsx` | servicio, categoria, urgencia y dias heredados | se queda en la lista |
+| `Administracion/AreasComerciales.jsx` | nombre y tipo | se queda en la lista |
+| `Clasificacion/ClasificarReclamo.jsx` | servicio y categoria | pasa a asignar plazo |
+| `Clasificacion/AsignarPlazo.jsx` | fecha limite | abre el reclamo |
+| `Seguimiento/AsignarCuadrilla.jsx` | orden de trabajo creada | pasa a avances |
+| `Seguimiento/DerivarComercial.jsx` | area y fecha | vuelve al reclamo |
+| `Reportes/Reportes.jsx` | mensaje del backend e `id_reporte` | se queda en la lista |
+
+**Las cinco paginas que redirigian ahora esperan al cierre del modal.** Antes, el
+`navigate()` se ejecutaba en el mismo `try` que el `await`, asi que la pantalla
+siguiente se montaba antes de que el usuario pudiera leer nada. Ahora el destino queda
+guardado y se navega en el `onCerrar`.
+
+En los catalogos se separaron los estados: `exito` sigue atendeiendo las alertas de
+*actualizada* y *eliminada*, y el alta usa un estado propio para el modal.
+
+### `src/index.css` (modificado)
+
+- `.modal-overlay`, `.modal`, `.modal__icono`, `.modal__cuerpo`, `.modal__pie`.
+- Animacion `modal-entrar` y `z-index: 100` (por encima del `.overlay` del menu, que
+  usa `35`).
+- Icono de error con un tachado en lugar del check.
+---
+
+## 18. Bugs corregidos
+
+### `vite.config.js` (modificado) — `/medidores` no estaba en el proxy
+
+**Sintoma:** al registrar un reclamo, el ciudadano ve
+`TypeError: medidores.find is not a function`.
+
+**Causa raiz:** `RUTAS_API` no incluia `/medidores`, asi que Vite no reenviaba la
+peticion al backend y respondia con el `index.html` de React. El componente recibia un
+string donde esperaba un array.
+
+```js
+const RUTAS_API = ['/auth', '/usuarios', '/medidores', '/reclamos', ...]
+```
+
+> Al agregar un endpoint nuevo hay que añadir su prefijo a `RUTAS_API`, tanto en
+> `server.proxy` como en `preview.proxy`. Sin eso la app carga y la llamada falla en
+> silencio, sin error de red.
+
+### `src/pages/Reclamos/ListaReclamos.jsx` (modificado) — el filtro de estado no se aplicaba
+
+**Sintoma:** se elegia un estado en el desplegable y la lista no cambiaba; el selector
+volvia a "Todos los estados". Afectaba a todos los roles, no solo al ciudadano.
+
+**Causa raiz:** el `onChange` encadenaba dos navegaciones:
+
+```jsx
+setFiltro('estado', e.target.value);   // escribe ?estado=clasificado
+setFiltro('estados', '');              // reconstruye desde el MISMO params viejo
+```
+
+`setFiltro` construye los parametros a partir del `params` del render anterior, asi que
+la segunda llamada pisaba a la primera y el estado elegido se perdia.
+
+**Solucion:** `aplicarFiltros(cambios)` acumula los cambios y navega una sola vez.
+
+```jsx
+onChange={(e) => aplicarFiltros({ estado: e.target.value, estados: '' })}
+```
+
+---
+
+## 19. Verificacion de esta tanda
+
+| Check | Resultado |
+|---|---|
+| `pytest` (backend) | 234 passed, salida 0 |
+| `pnpm lint` | 0 errores, salida 0 (24 warnings preexistentes de `set-state-in-effect`) |
+| `pnpm build` | salida 0 |
+| Modulos cargados por Vite | 14/14 en `200` |
+| Imports sin usar | ninguno en los 12 archivos tocados |
+| Endpoints por proxy | `/medidores/` responde 200 con token, 401 sin el |
+
+### Pendiente conocido, no implementado
+
+- **No hay pantalla de registro publico.** El backend expone `POST /auth/register` y
+  `AuthContext` exporta `registro`, pero ninguna pagina lo invoca: `Login.jsx` solo
+  enlaza a `/consulta`. Para que el ciudadano se registre solo hay que construirla.
+- **`src/components/Toast.jsx` sigue sin usarse.** Se creo en la seccion 15 pero ninguna pagina lo importa. O se reutiliza para avisos
+livianos o se elimina.

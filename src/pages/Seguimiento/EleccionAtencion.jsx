@@ -51,9 +51,15 @@ const EleccionAtencion = () => {
         <p className="card__texto">{reclamo.descripcion}</p>
         <dl className="lista-datos lista-datos--horizontal">
           <div className="lista-datos__item">
-            <dt>Servicio</dt>
-            <dd>{reclamo.servicio === 'agua' ? 'Agua' : 'Luz'}</dd>
+            <dt>Cuenta</dt>
+            <dd>{reclamo.servicio === 'agua' ? 'Agua' : 'Luz eléctrica'}</dd>
           </div>
+          {reclamo.numero_medidor && (
+            <div className="lista-datos__item">
+              <dt>Medidor</dt>
+              <dd>{reclamo.numero_medidor}</dd>
+            </div>
+          )}
           <div className="lista-datos__item">
             <dt>Categoría</dt>
             <dd>{reclamo.categoria?.replaceAll('_', ' ')}</dd>

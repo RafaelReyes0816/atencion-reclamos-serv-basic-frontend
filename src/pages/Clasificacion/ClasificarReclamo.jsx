@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { clasificarReclamo, obtenerReclamo } from '../../api/reclamos';
-import { Alerta, Badge, Cargando } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const SERVICIOS = [
@@ -36,6 +36,8 @@ const ClasificarReclamo = () => {
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  // La clasificacion se confirma en ventana emergente antes de seguir con el plazo.
+  const [clasificado, setClasificado] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -62,12 +64,19 @@ const ClasificarReclamo = () => {
     setError(null);
     try {
       await clasificarReclamo(id, formulario);
-      navegar(`/panel/reclamos/${id}/asignar-plazo`, { replace: true });
+      setClasificado(true);
     } catch (err) {
       setError(err.mensaje || 'No se pudo clasificar el reclamo');
     } finally {
       setEnviando(false);
     }
+  };
+
+  // Recien al cerrar la confirmación se pasa a asignar plazo: la pantalla
+  // siguiente no aparece encima del mensaje.
+  const cerrarClasificacion = () => {
+    setClasificado(false);
+    navegar(`/panel/reclamos/${id}/asignar-plazo`, { replace: true });
   };
 
   if (cargando) return <Cargando />;
@@ -96,6 +105,15 @@ const ClasificarReclamo = () => {
           Este reclamo ya tiene servicio, categoría y urgencia asignados. Puedes ajustarlos si
           corresponde.
         </Alerta>
+      )}
+
+      {clasificado && (
+        <Modal titulo="Reclamo clasificado" onCerrar={cerrarClasificacion}>
+          El reclamo #{reclamo.id_reclamo} quedó clasificado como{' '}
+          <strong>{formulario.servicio === 'agua' ? 'Agua' : 'Luz'}</strong> en categoría{' '}
+          <strong>{formulario.categoria.replaceAll('_', ' ')}</strong>. Al continuar se
+          asigna el plazo regulatorio.
+        </Modal>
       )}
 
       <section className="card">

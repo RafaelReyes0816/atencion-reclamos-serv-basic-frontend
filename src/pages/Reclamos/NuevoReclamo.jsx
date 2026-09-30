@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, esInterno as esInternoRol } from '../../context/AuthContext';
 import { crearReclamo } from '../../api/reclamos';
-import { Alerta } from '../../components/UI';
+import { listarMedidores, listarMedidoresDeCiudadanos } from '../../api/medidores';
+import { Alerta, Modal } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const SERVICIOS = ['agua', 'luz'];
@@ -12,6 +13,8 @@ const CATEGORIAS_POR_SERVICIO = {
   luz: ['corte', 'falla_tecnica', 'facturacion'],
 };
 
+const ETIQUETA_SERVICIO = { agua: 'Agua', luz: 'Luz eléctrica' };
+
 const NuevoReclamo = () => {
   const navegar = useNavigate();
   const { rol, idUsuario: miId } = useAuth();
@@ -19,14 +22,81 @@ const NuevoReclamo = () => {
   const [formulario, setFormulario] = useState({
     canal: 'web',
     servicio: 'agua',
+    id_medidor: '',
     categoria: 'corte',
     urgencia: 'normal',
     descripcion: '',
   });
-  const [idUsuario, setIdUsuario] = useState('');
+  const [ciudadano, setCiudadano] = useState('');
+  const [ciudadanos, setCiudadanos] = useState([]);
+  const [medidores, setMedidores] = useState([]);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [cargandoMedidores, setCargandoMedidores] = useState(false);
+
+  const interno = esInternoRol(rol);
+
+  // El backend entrega los medidores listos para elegir, con su numero. El
+  // ciudadano nunca escribe el numero: selecciona el suyo.
+  useEffect(() => {
+    if (!interno) return undefined;
+    let vigente = true;
+    listarMedidoresDeCiudadanos()
+      .then((datos) => {
+        if (vigente) setCiudadanos(datos);
+      })
+      .catch((err) => {
+        if (vigente) setError(detalleDe(err, 'No se pudo cargar la lista de ciudadanos'));
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [interno]);
+
+  useEffect(() => {
+    if (interno) return undefined;
+    let vigente = true;
+    setCargandoMedidores(true);
+    listarMedidores()
+      .then((datos) => {
+        if (vigente) setMedidores(datos);
+      })
+      .catch((err) => {
+        if (vigente) setError(detalleDe(err, 'No se pudieron cargar tus medidores'));
+      })
+      .finally(() => {
+        if (vigente) setCargandoMedidores(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [interno]);
+
+  const seleccionado = useMemo(
+    () => ciudadanos.find((c) => String(c.id_usuario) === String(ciudadano)) || null,
+    [ciudadanos, ciudadano]
+  );
+
+  // Al cambiar de ciudadano se recargan sus medidores, que ya vinieron en el
+  // listado: no hace falta otra peticion.
+  useEffect(() => {
+    if (!interno) return;
+    setMedidores(Array.isArray(seleccionado?.medidores) ? seleccionado.medidores : []);
+  }, [interno, seleccionado]);
+
+  // El medidor pertenece al cliente y a un solo servicio, asi que se recalcula
+  // cada vez que cambia cualquiera de los dos.
+  const medidorElegido = useMemo(
+    () => medidores.find((m) => String(m.id_medidor) === String(formulario.id_medidor)) || null,
+    [medidores, formulario.id_medidor]
+  );
+
+  const elegirCiudadano = (e) => {
+    const { value } = e.target;
+    setCiudadano(value);
+    setFormulario((f) => ({ ...f, id_medidor: '' }));
+  };
 
   const cambiar = (e) => {
     const { name, value } = e.target;
@@ -36,6 +106,7 @@ const NuevoReclamo = () => {
         return {
           ...f,
           servicio: value,
+          id_medidor: '',
           categoria: categorias.includes(f.categoria) ? f.categoria : categorias[0],
         };
       }
@@ -43,7 +114,7 @@ const NuevoReclamo = () => {
     });
   };
 
-  const interno = esInternoRol(rol);
+  const medidoresDisponibles = medidores.filter((m) => m.servicio === formulario.servicio);
 
   const enviar = async (e) => {
     e.preventDefault();
@@ -53,26 +124,24 @@ const NuevoReclamo = () => {
     try {
       // El schema exige id_usuario siempre; el backend valida que un ciudadano
       // solo registre a su propio nombre.
-      const cuerpo = { ...formulario };
-      if (interno) {
-        if (!idUsuario) {
-          setError('Indica el ID del usuario que presenta el reclamo.');
-          return;
-        }
-        cuerpo.id_usuario = parseInt(idUsuario, 10);
-      } else {
-        cuerpo.id_usuario = miId;
-      }
+      const cuerpo = { ...formulario, id_medidor: parseInt(formulario.id_medidor, 10) };
+      cuerpo.id_usuario = interno ? parseInt(ciudadano, 10) : miId;
 
       const creado = await crearReclamo(cuerpo);
-      navegar(`/panel/reclamos/${creado.id_reclamo}`, { replace: true });
+      // El modal queda puesto y recien al cerrarlo se abre el detalle: asi el
+      // numero del reclamo se lee antes de salir de la pantalla de registro.
+      setExito(creado);
     } catch (err) {
-      setError(
-        err.response?.data?.detail || err.message || err.mensaje || 'No se pudo crear el reclamo'
-      );
+      setError(detalleDe(err, 'No se pudo crear el reclamo'));
     } finally {
       setEnviando(false);
     }
+  };
+
+  const cerrarExito = () => {
+    const creado = exito;
+    setExito(null);
+    if (creado) navegar(`/panel/reclamos/${creado.id_reclamo}`, { replace: true });
   };
 
   return (
@@ -85,21 +154,28 @@ const NuevoReclamo = () => {
       </header>
 
       {error && <Alerta tipo="error" titulo="No se pudo registrar">{error}</Alerta>}
-      {exito && <Alerta tipo="exito" titulo="Listo">{exito}</Alerta>}
+
+      {exito && (
+        <Modal titulo="Reclamo registrado" onCerrar={cerrarExito}>
+          El reclamo quedó registrado con el número{' '}
+          <strong>#{exito.id_reclamo}</strong> y está en estado{' '}
+          <strong>{exito.estado.replaceAll('_', ' ')}</strong>. Ya podés seguirlo desde
+          tus reclamos.
+        </Modal>
+      )}
 
       <form className="card form-grid" onSubmit={enviar}>
         {interno && (
           <div className="campo campo--ancho">
-            <label htmlFor="id_usuario">ID del usuario</label>
-            <input
-              id="id_usuario"
-              type="number"
-              min="1"
-              value={idUsuario}
-              onChange={(e) => setIdUsuario(e.target.value)}
-              placeholder="Ej. 17"
-              required
-            />
+            <label htmlFor="ciudadano">Ciudadano que presenta el reclamo</label>
+            <select id="ciudadano" value={ciudadano} onChange={elegirCiudadano} required>
+              <option value="">Selecciona un ciudadano...</option>
+              {ciudadanos.map((c) => (
+                <option key={c.id_usuario} value={c.id_usuario}>
+                  {c.nombre} — {c.documento}
+                </option>
+              ))}
+            </select>
             <small className="campo__ayuda">
               Como usuario interno puedes registrar el reclamo a nombre de cualquier ciudadano.
             </small>
@@ -116,14 +192,48 @@ const NuevoReclamo = () => {
         </div>
 
         <div className="campo">
-          <label htmlFor="servicio">Servicio</label>
+          <label htmlFor="servicio">Cuenta</label>
           <select id="servicio" name="servicio" value={formulario.servicio} onChange={cambiar}>
             {SERVICIOS.map((s) => (
               <option key={s} value={s}>
-                {s === 'agua' ? 'Agua' : 'Energía eléctrica'}
+                {ETIQUETA_SERVICIO[s]}
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="campo">
+          <label htmlFor="id_medidor">Medidor</label>
+          <select
+            id="id_medidor"
+            name="id_medidor"
+            value={formulario.id_medidor}
+            onChange={cambiar}
+            disabled={interno ? !seleccionado : cargandoMedidores}
+            required
+          >
+            <option value="">
+              {interno
+                ? seleccionado
+                  ? 'Selecciona el medidor...'
+                  : 'Primero elige el ciudadano'
+                : cargandoMedidores
+                  ? 'Cargando...'
+                  : 'Selecciona el medidor...'}
+            </option>
+            {medidoresDisponibles.map((m) => (
+              <option key={m.id_medidor} value={m.id_medidor}>
+                {m.numero}
+              </option>
+            ))}
+          </select>
+          <small className="campo__ayuda">
+            {interno && !seleccionado
+              ? 'Los medidores son los que tiene dados de alta ese ciudadano.'
+              : medidorElegido
+                ? `Medidor de ${ETIQUETA_SERVICIO[formulario.servicio].toLowerCase()} de la cuenta.`
+                : `Solo se muestran los medidores de ${ETIQUETA_SERVICIO[formulario.servicio].toLowerCase()}.`}
+          </small>
         </div>
 
         <div className="campo">
@@ -180,5 +290,8 @@ const NuevoReclamo = () => {
     </div>
   );
 };
+
+const detalleDe = (err, porDefecto) =>
+  err.response?.data?.detail || err.message || err.mensaje || porDefecto;
 
 export default NuevoReclamo;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth, esGestion } from '../../context/AuthContext';
 import { listarNormativas, crearNormativa, actualizarNormativa, eliminarNormativa } from '../../api/catalogos';
-import { Alerta, Badge, Cargando, Vacio } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal, Vacio, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const VACIO = {
@@ -21,6 +21,9 @@ const Normativa = () => {
   const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  // El alta se confirma en ventana emergente; editar y eliminar siguen con alerta
+  // en linea porque son cambios de menor consecuencia.
+  const [creada, setCreada] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
@@ -59,8 +62,8 @@ const Normativa = () => {
         await actualizarNormativa(editando, cuerpo);
         setExito('Normativa actualizada.');
       } else {
-        await crearNormativa(cuerpo);
-        setExito('Normativa creada.');
+        const creada = await crearNormativa(cuerpo);
+        setCreada(creada);
       }
       limpiar();
       await cargar();
@@ -118,6 +121,16 @@ const Normativa = () => {
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
       {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
+
+      {creada && (
+        <Modal titulo="Normativa registrada" onCerrar={() => setCreada(null)}>
+          Se registró la norma de <strong>{humanizar(creada.servicio)}</strong> en
+          categoría <strong>{humanizar(creada.categoria)}</strong> con urgencia{' '}
+          <strong>{humanizar(creada.urgencia)}</strong>. A partir de ahora los reclamos
+          nuevos de esa combinación heredan{' '}
+          <strong>{creada.plazo_maximo_dias}</strong> día(s) de plazo.
+        </Modal>
+      )}
 
       {puedeEditar && (
         <form className="card form-grid" onSubmit={guardar}>

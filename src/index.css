@@ -535,6 +535,17 @@ textarea {
   border-color: var(--exito-200);
 }
 
+.badge--servicio-agua {
+  background: var(--agua-50);
+  color: var(--agua-600);
+  border-color: #b6e8ef;
+}
+.badge--servicio-luz {
+  background: var(--luz-50);
+  color: var(--luz-600);
+  border-color: var(--luz-200);
+}
+
 .servicio {
   display: inline-flex;
   align-items: center;
@@ -2708,3 +2719,95 @@ textarea {
     bottom: var(--e-4);
   }
 }
+
+/* ----------------------------- Modales ---------------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--e-4);
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(2px);
+  animation: aparecer 180ms ease;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-4);
+  width: min(420px, 100%);
+  padding: var(--e-6);
+  background: var(--n-0);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 45px rgb(15 23 42 / 0.25);
+  text-align: center;
+  animation: modal-entrar 200ms ease;
+}
+
+@keyframes modal-entrar {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal__icono {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.modal__icono::after {
+  content: '\2713';
+}
+
+/* El icono de error lleva un tachado en vez de un check. */
+.modal--error .modal__icono::after {
+  content: '\00d7';
+}
+
+.modal__icono--exito {
+  background: var(--exito-50);
+  color: var(--exito-600);
+}
+
+.modal__icono--info {
+  background: var(--azul-50);
+  color: var(--azul-600);
+}
+
+.modal__icono--error {
+  background: var(--peligro-50);
+  color: var(--peligro-600);
+}
+
+.modal__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.modal__titulo {
+  font-size: 1.1rem;
+  color: var(--n-900);
+}
+
+.modal__texto {
+  color: var(--n-600);
+  line-height: 1.5;
+}
+
+.modal__pie {
+  display: flex;
+  justify-content: center;
+  gap: var(--e-2);
+  width: 100%;
+}
+

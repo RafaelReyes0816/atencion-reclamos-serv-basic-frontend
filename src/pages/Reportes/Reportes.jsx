@@ -5,7 +5,7 @@ import {
   generarReporteMensual,
   descargarReporteExcel,
 } from '../../api/reportes';
-import { Alerta, Cargando, Vacio, humanizar } from '../../components/UI';
+import { Alerta, Cargando, Modal, Vacio, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const TIPOS = {
@@ -16,7 +16,9 @@ const TIPOS = {
 const Reportes = () => {
   const [reportes, setReportes] = useState([]);
   const [error, setError] = useState(null);
-  const [exito, setExito] = useState(null);
+  // La generacion de un reporte se confirma en ventana emergente: es un proceso
+  // que tarda y del que el usuario quiere saber que quedo guardado.
+  const [generado, setGenerado] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(null);
   const [descargando, setDescargando] = useState(null);
@@ -40,10 +42,11 @@ const Reportes = () => {
   const generar = async (tipo, fn) => {
     setGenerando(tipo);
     setError(null);
-    setExito(null);
     try {
       const r = await fn();
-      setExito(r.message || `Reporte ${TIPOS[tipo]} generado (ID ${r.id_reporte}).`);
+      // El backend devuelve `message` e `id_reporte`; el tipo ya lo sabemos por el
+      // boton que se pulso, asi que no hace falta volver a buscar el reporte.
+      setGenerado({ ...r, tipo });
       await cargar();
     } catch (err) {
       setError(err.mensaje || 'No se pudo generar el reporte');
@@ -82,7 +85,14 @@ const Reportes = () => {
       </header>
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
-      {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
+
+      {generado && (
+        <Modal titulo="Reporte generado" onCerrar={() => setGenerado(null)}>
+          {generado.message || `Reporte generado.`} Quedó guardado con el ID{' '}
+          <strong>#{generado.id_reporte}</strong> y ya podés descargarlo en Excel desde
+          la tabla de abajo.
+        </Modal>
+      )}
 
       <section className="card">
         <h2 className="card__titulo">Generar nuevo reporte</h2>

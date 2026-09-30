@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth, esGestion } from '../../context/AuthContext';
 import { listarCuadrillas, crearCuadrilla, actualizarCuadrilla, eliminarCuadrilla } from '../../api/catalogos';
-import { Alerta, Cargando, Vacio } from '../../components/UI';
+import { Alerta, Cargando, Modal, Vacio } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const VACIO = { nombre: '', especialidad: 'agua', contacto: '', capacidad: 3 };
@@ -15,6 +15,9 @@ const Cuadrillas = () => {
   const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  // El alta se confirma en ventana emergente; editar y eliminar siguen con alerta
+  // en linea porque son cambios de menor consecuencia.
+  const [creada, setCreada] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
@@ -50,8 +53,8 @@ const Cuadrillas = () => {
         await actualizarCuadrilla(editando, cuerpo);
         setExito('Cuadrilla actualizada.');
       } else {
-        await crearCuadrilla(cuerpo);
-        setExito('Cuadrilla creada.');
+        const creada = await crearCuadrilla(cuerpo);
+        setCreada(creada);
       }
       limpiar();
       await cargar();
@@ -100,6 +103,14 @@ const Cuadrillas = () => {
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
       {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
+
+      {creada && (
+        <Modal titulo="Cuadrilla registrada" onCerrar={() => setCreada(null)}>
+          La cuadrilla <strong>{creada.nombre}</strong> quedó creada con una capacidad
+          de <strong>{creada.capacidad}</strong> trabajo(s) simultáneo(s) y ya está
+          disponible para asignar.
+        </Modal>
+      )}
 
       {puedeEditar && (
         <form className="card form-grid" onSubmit={guardar}>

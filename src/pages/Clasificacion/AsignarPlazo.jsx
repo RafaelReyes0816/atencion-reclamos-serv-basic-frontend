@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { asignarPlazo, obtenerReclamo } from '../../api/reclamos';
 import { normativaVigente, listarNormativas } from '../../api/catalogos';
-import { Alerta, Badge, Cargando } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const AsignarPlazo = () => {
@@ -15,6 +15,9 @@ const AsignarPlazo = () => {
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  // El plazo asignado se confirma en ventana emergente: es el dato que el
+  // ciudadano ve y por eso conviene que quede a la vista.
+  const [asignado, setAsignado] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -67,12 +70,18 @@ const AsignarPlazo = () => {
         id_normativa: parseInt(formulario.id_normativa),
         fecha_tope: formulario.fecha_tope,
       });
-      navegar(`/panel/reclamos/${id}`, { replace: true });
+      setAsignado(true);
     } catch (err) {
       setError(err.mensaje || 'No se pudo asignar el plazo');
     } finally {
       setEnviando(false);
     }
+  };
+
+  // El detalle del reclamo se abre recien al cerrar la confirmacion del plazo.
+  const cerrarAsignacion = () => {
+    setAsignado(false);
+    navegar(`/panel/reclamos/${id}`, { replace: true });
   };
 
   if (cargando) return <Cargando />;
@@ -105,6 +114,15 @@ const AsignarPlazo = () => {
           No hay normas de plazo configuradas. Un supervisor o administrador debe crearlas en
           Administración → Normativa.
         </Alerta>
+      )}
+
+      {asignado && (
+        <Modal titulo="Plazo asignado" onCerrar={cerrarAsignacion}>
+          El reclamo #{reclamo.id_reclamo} tiene como fecha límite{' '}
+          <strong>{formulario.fecha_tope}</strong>
+          {normSel && ` según la norma de ${normSel.plazo_maximo_dias} día(s)`}. Desde
+          ahora corre el cómputo del plazo regulatorio.
+        </Modal>
       )}
 
       <form className="card form-grid" onSubmit={enviar}>

@@ -40,12 +40,23 @@ const ListaReclamos = () => {
     [params]
   );
 
-  const setFiltro = (clave, valor) => {
+  /** Aplica varios cambios a la URL de una sola vez.
+   *
+   *  No se pueden encadenar dos `setParams` en el mismo manejador: los dos leen el
+   *  mismo `params` del render anterior, asi que el segundo pisa al primero y el
+   *  filtro recien elegido se pierde. Por eso se acumulan los cambios y se navega
+   *  una unica vez.
+   */
+  const aplicarFiltros = (cambios) => {
     const nuevos = new URLSearchParams(params);
-    if (valor === '' || valor === false) nuevos.delete(clave);
-    else nuevos.set(clave, valor === true ? '1' : String(valor));
+    for (const [clave, valor] of Object.entries(cambios)) {
+      if (valor === '' || valor === false || valor === null) nuevos.delete(clave);
+      else nuevos.set(clave, valor === true ? '1' : String(valor));
+    }
     setParams(nuevos, { replace: true });
   };
+
+  const setFiltro = (clave, valor) => aplicarFiltros({ [clave]: valor });
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -152,10 +163,7 @@ const ListaReclamos = () => {
 
           <select
             value={filtros.estado}
-            onChange={(e) => {
-              setFiltro('estado', e.target.value);
-              setFiltro('estados', '');
-            }}
+            onChange={(e) => aplicarFiltros({ estado: e.target.value, estados: '' })}
             aria-label="Filtrar por estado"
           >
             <option value="">Todos los estados</option>

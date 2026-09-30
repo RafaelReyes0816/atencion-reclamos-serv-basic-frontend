@@ -8,7 +8,8 @@ import FlujoReclamo from '../../components/FlujoReclamo';
 import { icono } from '../../components/Iconos';
 
 const CAMPOS = [
-  ['servicio', 'Servicio'],
+  ['servicio', 'Cuenta'],
+  ['numero_medidor', 'Número de medidor'],
   ['categoria', 'Categoría'],
   ['urgencia', 'Urgencia'],
   ['canal', 'Canal'],
@@ -255,9 +256,15 @@ const DetalleReclamo = () => {
                   <strong>#{comprobante.id_reclamo}</strong>
                 </div>
                 <div className="comprobante__fila">
-                  <small>Servicio</small>
-                  <strong>{comprobante.servicio}</strong>
+                  <small>Cuenta</small>
+                  <strong>{comprobante.servicio === 'agua' ? 'Agua' : 'Luz eléctrica'}</strong>
                 </div>
+                {comprobante.numero_medidor && (
+                  <div className="comprobante__fila">
+                    <small>Medidor</small>
+                    <strong>{comprobante.numero_medidor}</strong>
+                  </div>
+                )}
                 <div className="comprobante__fila">
                   <small>Categoría</small>
                   <strong>{humanizar(comprobante.categoria)}</strong>

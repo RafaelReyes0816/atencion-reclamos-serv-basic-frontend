@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { crearOrden, obtenerOrdenPorReclamo } from '../../api/seguimiento';
 import { cuadrillasDisponibles } from '../../api/catalogos';
 import { obtenerReclamo } from '../../api/reclamos';
-import { Alerta, Badge, Cargando } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const AsignarCuadrilla = () => {
@@ -19,6 +19,8 @@ const AsignarCuadrilla = () => {
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  // La orden de trabajo creada se confirma antes de pasar a registrar avances.
+  const [asignada, setAsignada] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -56,12 +58,17 @@ const AsignarCuadrilla = () => {
         cuadrilla: formulario.cuadrilla,
         fecha_asignacion: formulario.fecha_asignacion,
       });
-      navegar(`/panel/reclamos/${id}/avances`, { replace: true });
+      setAsignada(true);
     } catch (err) {
       setError(err.mensaje || 'No se pudo asignar la cuadrilla');
     } finally {
       setEnviando(false);
     }
+  };
+
+  const cerrarAsignacion = () => {
+    setAsignada(false);
+    navegar(`/panel/reclamos/${id}/avances`, { replace: true });
   };
 
   if (cargando) return <Cargando />;
@@ -85,6 +92,15 @@ const AsignarCuadrilla = () => {
 
       {error && <Alerta tipo="error" titulo="Error">{error}</Alerta>}
 
+      {asignada && (
+        <Modal titulo="Orden de trabajo creada" onCerrar={cerrarAsignacion}>
+          La cuadrilla <strong>{formulario.cuadrilla}</strong> quedó asignada al reclamo #
+          {reclamo.id_reclamo} con fecha de asignación{' '}
+          <strong>{formulario.fecha_asignacion}</strong>. Al continuar podés registrar
+          los avances del trabajo.
+        </Modal>
+      )}
+
       {cuadrillas.length === 0 && !error && (
         <Alerta tipo="aviso" titulo="Sin cuadrillas disponibles">
           No hay cuadrillas de especialidad <strong>{reclamo.servicio}</strong> registradas.
@@ -95,6 +111,18 @@ const AsignarCuadrilla = () => {
       <section className="card">
         <h2 className="card__titulo">Descripción del reclamo</h2>
         <p className="card__texto">{reclamo.descripcion}</p>
+        <dl className="lista-datos lista-datos--horizontal">
+          <div className="lista-datos__item">
+            <dt>Cuenta</dt>
+            <dd>{reclamo.servicio === 'agua' ? 'Agua' : 'Luz eléctrica'}</dd>
+          </div>
+          {reclamo.numero_medidor && (
+            <div className="lista-datos__item">
+              <dt>Medidor</dt>
+              <dd>{reclamo.numero_medidor}</dd>
+            </div>
+          )}
+        </dl>
       </section>
 
       <form className="card form-grid" onSubmit={enviar}>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { crearDerivacion, obtenerDerivacion } from '../../api/seguimiento';
 import { listarAreas } from '../../api/catalogos';
 import { obtenerReclamo } from '../../api/reclamos';
-import { Alerta, Badge, Cargando } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const DerivarComercial = () => {
@@ -19,6 +19,8 @@ const DerivarComercial = () => {
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  // La derivacion se confirma antes de volver al detalle del reclamo.
+  const [derivada, setDerivada] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -56,12 +58,17 @@ const DerivarComercial = () => {
         area_comercial: formulario.area_comercial,
         fecha_derivacion: formulario.fecha_derivacion,
       });
-      navegar(`/panel/reclamos/${id}`, { replace: true });
+      setDerivada(true);
     } catch (err) {
       setError(err.mensaje || 'No se pudo crear la derivación');
     } finally {
       setEnviando(false);
     }
+  };
+
+  const cerrarDerivacion = () => {
+    setDerivada(false);
+    navegar(`/panel/reclamos/${id}`, { replace: true });
   };
 
   if (cargando) return <Cargando />;
@@ -85,6 +92,15 @@ const DerivarComercial = () => {
       </header>
 
       {error && <Alerta tipo="error" titulo="Error">{error}</Alerta>}
+
+      {derivada && (
+        <Modal titulo="Derivación registrada" onCerrar={cerrarDerivacion}>
+          El reclamo #{reclamo.id_reclamo} quedó derivado al área{' '}
+          <strong>{formulario.area_comercial.replaceAll('_', ' ')}</strong> el{' '}
+          <strong>{formulario.fecha_derivacion}</strong>. Quedó en estado{' '}
+          <strong>en atención comercial</strong>.
+        </Modal>
+      )}
 
       {areas.length === 0 && !error && (
         <Alerta tipo="aviso" titulo="Sin áreas comerciales">

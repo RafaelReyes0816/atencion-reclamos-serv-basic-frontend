@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth, esGestion } from '../../context/AuthContext';
 import { listarAreas, crearArea, actualizarArea, eliminarArea } from '../../api/catalogos';
-import { Alerta, Cargando, Vacio } from '../../components/UI';
+import { Alerta, Cargando, Modal, Vacio, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const VACIO = { nombre: '', tipo: 'facturacion', contacto: '' };
@@ -20,6 +20,9 @@ const AreasComerciales = () => {
   const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  // El alta se confirma en ventana emergente; editar y eliminar siguen con alerta
+  // en linea porque son cambios de menor consecuencia.
+  const [creada, setCreada] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
@@ -54,8 +57,8 @@ const AreasComerciales = () => {
         await actualizarArea(editando, formulario);
         setExito('Área actualizada.');
       } else {
-        await crearArea(formulario);
-        setExito('Área creada.');
+        const creada = await crearArea(formulario);
+        setCreada(creada);
       }
       limpiar();
       await cargar();
@@ -99,6 +102,14 @@ const AreasComerciales = () => {
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
       {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
+
+      {creada && (
+        <Modal titulo="Área registrada" onCerrar={() => setCreada(null)}>
+          El área <strong>{creada.nombre}</strong> quedó creada como{' '}
+          <strong>{humanizar(creada.tipo)}</strong> y ya puede recibir derivaciones
+          comerciales.
+        </Modal>
+      )}
 
       {puedeEditar && (
         <form className="card form-grid" onSubmit={guardar}>

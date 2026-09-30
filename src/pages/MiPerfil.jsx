@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { obtenerUsuarioPorDocumento, actualizarUsuario, cambiarContrasena } from '../api/usuarios';
+import { listarMedidores, actualizarMedidor } from '../api/medidores';
 import { Alerta, Badge, Cargando } from '../components/UI';
 import { icono } from '../components/Iconos';
+
+const ETIQUETA_SERVICIO = { agua: 'Agua', luz: 'Luz eléctrica' };
 
 const MiPerfil = () => {
   const { documento, rol, nombre, idUsuario } = useAuth();
   const [perfil, setPerfil] = useState(null);
   const [formulario, setFormulario] = useState({ nombre: '', telefono: '', email: '', direccion: '' });
   const [claves, setClaves] = useState({ contrasena_actual: '', contrasena_nueva: '' });
+  const [medidores, setMedidores] = useState([]);
+  const [numeros, setNumeros] = useState({});
+  const [editando, setEditando] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -17,8 +23,13 @@ const MiPerfil = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const u = await obtenerUsuarioPorDocumento(documento);
+        const [u, lista] = await Promise.all([
+          obtenerUsuarioPorDocumento(documento),
+          listarMedidores(),
+        ]);
         setPerfil(u);
+        setMedidores(lista);
+        setNumeros(Object.fromEntries(lista.map((m) => [m.id_medidor, m.numero])));
         setFormulario({
           nombre: u.nombre || '',
           telefono: u.telefono || '',
@@ -33,6 +44,23 @@ const MiPerfil = () => {
     };
     cargar();
   }, [documento]);
+
+  const guardarMedidor = async (e, idMedidor) => {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    setExito(null);
+    try {
+      const actualizado = await actualizarMedidor(idMedidor, { numero: numeros[idMedidor] });
+      setMedidores((lista) => lista.map((m) => (m.id_medidor === idMedidor ? actualizado : m)));
+      setEditando(null);
+      setExito('Medidor actualizado.');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.mensaje || 'No se pudo actualizar el medidor');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const guardarDatos = async (e) => {
     e.preventDefault();
@@ -96,6 +124,74 @@ const MiPerfil = () => {
       </section>
 
       <div className="perfil__grid">
+        <section className="card">
+          <h2 className="card__titulo">Mis medidores</h2>
+          <p className="card__texto">
+            El sistema asigna uno por servicio al crear tu cuenta. Si la empresa te
+            entregó otro número, corrígelo aquí.
+          </p>
+          {medidores.length === 0 ? (
+            <p className="card__texto">Aún no tienes medidores registrados.</p>
+          ) : (
+            medidores.map((m) => (
+              <form
+                key={m.id_medidor}
+                className="form-grid form-grid--apilado"
+                onSubmit={(e) => guardarMedidor(e, m.id_medidor)}
+              >
+                <Badge valor={m.servicio} tipo="servicio">
+                  {ETIQUETA_SERVICIO[m.servicio] || m.servicio}
+                </Badge>
+                {editando === m.id_medidor ? (
+                  <>
+                    <div className="campo">
+                      <label htmlFor={`m_${m.id_medidor}`}>Número de medidor</label>
+                      <input
+                        id={`m_${m.id_medidor}`}
+                        value={numeros[m.id_medidor] ?? ''}
+                        onChange={(e) =>
+                          setNumeros({ ...numeros, [m.id_medidor]: e.target.value })
+                        }
+                        minLength="4"
+                        maxLength="30"
+                        pattern="[A-Za-z0-9\-]+"
+                        required
+                      />
+                      <small className="campo__ayuda">
+                        Entre 4 y 30 caracteres: letras, números y guiones.
+                      </small>
+                    </div>
+                    <div className="form-grid__acciones">
+                      <button
+                        type="button"
+                        className="btn btn--outline"
+                        onClick={() => setEditando(null)}
+                      >
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn btn--primary" disabled={guardando}>
+                        {icono('check')}
+                        Guardar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="form-grid__acciones">
+                    <span className="card__texto">{m.numero}</span>
+                    <button
+                      type="button"
+                      className="btn btn--outline"
+                      onClick={() => setEditando(m.id_medidor)}
+                    >
+                      Editar
+                    </button>
+                  </div>
+                )}
+              </form>
+            ))
+          )}
+        </section>
+
         <section className="card">
           <h2 className="card__titulo">Datos de contacto</h2>
           <form className="form-grid form-grid--apilado" onSubmit={guardarDatos}>

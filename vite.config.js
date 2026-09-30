@@ -8,6 +8,7 @@ const BACKEND = 'http://127.0.0.1:8000'
 const RUTAS_API = [
   '/auth',
   '/usuarios',
+  '/medidores',
   '/reclamos',
   '/normativa',
   '/cuadrillas',

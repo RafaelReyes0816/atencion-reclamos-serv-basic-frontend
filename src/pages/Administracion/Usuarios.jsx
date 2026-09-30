@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { listarUsuarios, crearUsuario, eliminarUsuario } from '../../api/usuarios';
-import { Alerta, Badge, Cargando, humanizar } from '../../components/UI';
+import { Alerta, Badge, Cargando, Modal, humanizar } from '../../components/UI';
 import { icono } from '../../components/Iconos';
 
 const ROLES = ['ciudadano', 'tecnico', 'supervisor', 'admin'];
@@ -23,6 +23,9 @@ const Usuarios = () => {
   const [formulario, setFormulario] = useState(VACIO);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  // El alta de un usuario se confirma en ventana emergente: es el resultado que
+  // hay que leer con calma (documento y rol asignados), no una nota al pie.
+  const [creado, setCreado] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [filtro, setFiltro] = useState('');
@@ -53,8 +56,8 @@ const Usuarios = () => {
     try {
       const { contrasena, ...datos } = formulario;
       // El schema del backend exige el campo con tilde: "contraseña".
-      const creado = await crearUsuario({ ...datos, contraseña: contrasena });
-      setExito(`Usuario ${creado.documento} creado con rol ${creado.rol}.`);
+      const nuevo = await crearUsuario({ ...datos, contraseña: contrasena });
+      setCreado(nuevo);
       setFormulario(VACIO);
       await cargar();
     } catch (err) {
@@ -105,6 +108,14 @@ const Usuarios = () => {
 
       {error && <Alerta tipo="error" titulo="Error" onCerrar={() => setError(null)}>{error}</Alerta>}
       {exito && <Alerta tipo="exito" onCerrar={() => setExito(null)}>{exito}</Alerta>}
+
+      {creado && (
+        <Modal titulo="Usuario creado" onCerrar={() => setCreado(null)}>
+          El usuario <strong>{creado.documento}</strong> quedó registrado con el rol{' '}
+          <strong>{humanizar(creado.rol)}</strong>. Ya puede iniciar sesión con ese
+          documento y la contraseña que le asignaste.
+        </Modal>
+      )}
 
       {esAdmin && (
         <details className="card collapsible">

@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export const ETIQUETA_ESTADO = {
   registrado: 'Registrado',
   clasificado: 'Clasificado',
@@ -66,3 +68,55 @@ export const Cargando = ({ texto = 'Cargando...' }) => (
     <p>{texto}</p>
   </div>
 );
+
+/**
+ * Ventana emergente para confirmar que una operacion quedo registrada.
+ *
+ * Se usa en los casos en que el resultado importa y no conviene perderlo de vista:
+ * el mensaje tapa la pantalla y la pagina siguiente no carga hasta que el usuario
+ * lo cierra. Las alertas en linea se reservan para errores y para resultados
+ * menores, que se pueden leer y seguir trabajando sin parar.
+ */
+export const Modal = ({ titulo = 'Listo', children, onCerrar, backdrop = true, tipo = 'exito' }) => {
+  // Escape cierra y el fondo no se desplaza mientras la ventana esta abierta: sin
+  // esto la pagina sigue scrolleando por detras y el mensaje se lee a medias.
+  useEffect(() => {
+    const alPulsar = (e) => {
+      if (e.key === 'Escape') onCerrar();
+    };
+    document.addEventListener('keydown', alPulsar);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', alPulsar);
+      document.body.style.overflow = overflow;
+    };
+  }, [onCerrar]);
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={backdrop ? onCerrar : undefined}
+      role="presentation"
+    >
+      <div
+        className={`modal modal--${tipo}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`modal__icono modal__icono--${tipo}`} aria-hidden="true" />
+        <div className="modal__cuerpo">
+          <strong className="modal__titulo">{titulo}</strong>
+          <div className="modal__texto">{children}</div>
+        </div>
+        <div className="modal__pie">
+          <button type="button" className="btn btn--primary" onClick={onCerrar} autoFocus>
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
